@@ -12,7 +12,7 @@ const socket = io('https://server-production-836b.up.railway.app', {
   transports: ['websocket', 'polling'],
   autoConnect: true
 });
-// Initial Board with Persistent Unique IDs for each piece
+
 const createInitialBoard = () => {
   const board = Array(8).fill(null).map(() => Array(8).fill(null));
   let pieceIdCounter = 1;
@@ -112,7 +112,6 @@ export default function App() {
       const wasKing = piece.isKing;
       piece.isKing = checkKingPromotion(piece, row);
 
-      // Move same piece instance to new coordinate
       newBoard[row][col] = piece;
       newBoard[selectedPiece.row][selectedPiece.col] = null;
 
@@ -151,7 +150,7 @@ export default function App() {
   const isMyTurn = currentTurn === myColor;
 
   return (
-    <div style={{ width: '100vw', minHeight: '100vh', backgroundColor: '#070b14', color: '#f8fafc', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ width: '100vw', minHeight: '100vh', backgroundColor: '#070b14', color: '#f8fafc' }}>
       <Navbar onNavigate={setCurrentView} activeTab={currentView} />
 
       {currentView === 'home' && (
@@ -180,17 +179,17 @@ export default function App() {
           />
 
           {inLobby ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 80px)', padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 80px)', padding: '16px' }}>
               <motion.div 
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                style={{ background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(16px)', padding: '40px', borderRadius: '24px', border: '1px solid rgba(56, 189, 248, 0.25)', width: '390px', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.6)' }}
+                style={{ background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(16px)', padding: '32px 24px', borderRadius: '24px', border: '1px solid rgba(56, 189, 248, 0.25)', width: '100%', maxWidth: '380px', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.6)' }}
               >
-                <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'linear-gradient(135deg, #0284c7, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', margin: '0 auto 16px', boxShadow: '0 0 20px rgba(56, 189, 248, 0.4)' }}>
+                <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'linear-gradient(135deg, #0284c7, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', margin: '0 auto 14px', boxShadow: '0 0 20px rgba(56, 189, 248, 0.4)' }}>
                   ⚔️
                 </div>
-                <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#f8fafc', marginBottom: '8px' }}>1v1 Arena Match</h2>
-                <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '28px' }}>Enter a custom Room ID to battle online</p>
+                <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#f8fafc', marginBottom: '8px' }}>1v1 Arena Match</h2>
+                <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '24px' }}>Enter a custom Room ID to battle online</p>
 
                 <form onSubmit={handleJoinRoom} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <input
@@ -198,14 +197,14 @@ export default function App() {
                     placeholder="Enter Room Code (e.g. SL_PRO)"
                     value={roomId}
                     onChange={(e) => setRoomId(e.target.value)}
-                    style={{ padding: '14px 18px', borderRadius: '12px', border: '1px solid #334155', background: '#020617', color: '#fff', fontSize: '15px', outline: 'none' }}
+                    style={{ padding: '12px 16px', borderRadius: '12px', border: '1px solid #334155', background: '#020617', color: '#fff', fontSize: '15px', outline: 'none' }}
                     required
                   />
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
-                    style={{ padding: '14px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #0284c7, #2563eb)', color: '#fff', fontSize: '16px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(2, 132, 199, 0.4)' }}
+                    style={{ padding: '12px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #0284c7, #2563eb)', color: '#fff', fontSize: '15px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(2, 132, 199, 0.4)' }}
                   >
                     Enter Arena
                   </motion.button>
@@ -213,59 +212,59 @@ export default function App() {
               </motion.div>
             </div>
           ) : (
-            <div style={{ padding: '24px 30px', maxWidth: '1400px', margin: '0 auto' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '20px', marginBottom: '20px' }}>
-                <div style={{ 
+            <div style={{ padding: '16px', maxWidth: '1400px', margin: '0 auto' }}>
+              
+              {/* Responsive HUD Grid */}
+              <div className="hud-grid">
+                <div className="hud-card" style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
-                  gap: '14px', 
-                  padding: '12px 20px', 
-                  borderRadius: '16px', 
+                  gap: '10px', 
+                  padding: '10px 14px', 
+                  borderRadius: '14px', 
                   background: currentTurn === 'red' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(15, 23, 42, 0.6)', 
-                  border: `1px solid ${currentTurn === 'red' ? '#ef4444' : '#1e293b'}`,
-                  boxShadow: currentTurn === 'red' ? '0 0 20px rgba(239, 68, 68, 0.2)' : 'none'
+                  border: `1px solid ${currentTurn === 'red' ? '#ef4444' : '#1e293b'}`
                 }}>
-                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: '#fff' }}>
+                  <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900' }}>
                     🔴
                   </div>
                   <div>
-                    <div style={{ fontSize: '14px', fontWeight: '700', color: '#f8fafc' }}>RED PLAYER {myColor === 'red' ? '(You)' : ''}</div>
-                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>Pieces: <strong style={{ color: '#ef4444' }}>{stats.redCount}</strong> / 12</div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#f8fafc' }}>RED {myColor === 'red' ? '(You)' : ''}</div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>Pieces: <strong style={{ color: '#ef4444' }}>{stats.redCount}</strong></div>
                   </div>
                 </div>
 
-                <div style={{ textAlign: 'center' }}>
+                <div className="hud-center" style={{ textAlign: 'center' }}>
                   <span style={{ 
                     display: 'inline-block', 
-                    padding: '6px 16px', 
+                    padding: '5px 14px', 
                     borderRadius: '20px', 
-                    fontSize: '12px', 
+                    fontSize: '11px', 
                     fontWeight: '800',
                     background: isMyTurn ? 'rgba(16, 185, 129, 0.2)' : 'rgba(234, 179, 8, 0.15)',
                     color: isMyTurn ? '#10b981' : '#eab308',
                     border: `1px solid ${isMyTurn ? '#10b981' : '#eab308'}`
                   }}>
-                    {isMyTurn ? '⚡ YOUR TURN' : "⏳ OPPONENT THINKING"}
+                    {isMyTurn ? '⚡ YOUR TURN' : "⏳ OPPONENT"}
                   </span>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Room: <strong>{roomId}</strong> ({playerCount}/2)</div>
+                  <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>Room: <strong>{roomId}</strong></div>
                 </div>
 
-                <div style={{ 
+                <div className="hud-card" style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
                   justifyContent: 'flex-end',
-                  gap: '14px', 
-                  padding: '12px 20px', 
-                  borderRadius: '16px', 
+                  gap: '10px', 
+                  padding: '10px 14px', 
+                  borderRadius: '14px', 
                   background: currentTurn === 'white' ? 'rgba(248, 250, 252, 0.15)' : 'rgba(15, 23, 42, 0.6)', 
-                  border: `1px solid ${currentTurn === 'white' ? '#f8fafc' : '#1e293b'}`,
-                  boxShadow: currentTurn === 'white' ? '0 0 20px rgba(248, 250, 252, 0.2)' : 'none'
+                  border: `1px solid ${currentTurn === 'white' ? '#f8fafc' : '#1e293b'}`
                 }}>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '14px', fontWeight: '700', color: '#f8fafc' }}>WHITE PLAYER {myColor === 'white' ? '(You)' : ''}</div>
-                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>Pieces: <strong style={{ color: '#f8fafc' }}>{stats.whiteCount}</strong> / 12</div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#f8fafc' }}>WHITE {myColor === 'white' ? '(You)' : ''}</div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>Pieces: <strong style={{ color: '#f8fafc' }}>{stats.whiteCount}</strong></div>
                   </div>
-                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: '#0f172a' }}>
+                  <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900' }}>
                     ⚪
                   </div>
                 </div>
@@ -276,14 +275,15 @@ export default function App() {
                   <motion.div 
                     initial={{ y: -20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    style={{ marginBottom: '20px', padding: '16px', background: stats.winner.toLowerCase() === myColor ? 'linear-gradient(90deg, #059669, #10b981)' : 'linear-gradient(90deg, #b91c1c, #ef4444)', color: '#fff', textAlign: 'center', borderRadius: '16px', fontWeight: '800', fontSize: '18px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
+                    style={{ marginBottom: '16px', padding: '14px', background: stats.winner.toLowerCase() === myColor ? 'linear-gradient(90deg, #059669, #10b981)' : 'linear-gradient(90deg, #b91c1c, #ef4444)', color: '#fff', textAlign: 'center', borderRadius: '14px', fontWeight: '800', fontSize: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
                   >
                     🏆 VICTORY! {stats.winner === (myColor ? myColor.charAt(0).toUpperCase() + myColor.slice(1) : '') ? 'YOU WON THE MATCH!' : 'OPPONENT WON THE MATCH!'}
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '24px', alignItems: 'start' }}>
+              {/* Responsive Arena Layout */}
+              <div className="arena-grid">
                 <Board3D 
                   boardState={boardState}
                   selectedPiece={selectedPiece}
@@ -300,11 +300,11 @@ export default function App() {
                     onPinchStateChange={setIsPinching}
                   />
 
-                  <div style={{ background: '#0f172a', borderRadius: '14px', border: '1px solid #1e293b', padding: '14px', height: '220px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#38bdf8', marginBottom: '8px', letterSpacing: '0.5px' }}>
+                  <div style={{ background: '#0f172a', borderRadius: '14px', border: '1px solid #1e293b', padding: '12px', height: '180px', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '800', color: '#38bdf8', marginBottom: '6px' }}>
                       ⚡ LIVE COMBAT LOG
                     </div>
-                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', color: '#94a3b8', fontFamily: 'monospace' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '11px', color: '#94a3b8', fontFamily: 'monospace' }}>
                       {moveLogs.length === 0 ? (
                         <div style={{ color: '#475569', fontStyle: 'italic' }}>Waiting for first move...</div>
                       ) : (
