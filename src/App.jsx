@@ -8,7 +8,7 @@ import HandTracker from './components/HandTracker';
 import { calculateValidMoves, checkKingPromotion, getGameStats } from './utils/gameLogic';
 import { sounds } from './utils/audio';
 
-const socket = io('server-production-836b.up.railway.app');
+const socket = io('https://server-production-836b.up.railway.app/');
 
 // Initial Board with Persistent Unique IDs for each piece
 const createInitialBoard = () => {
