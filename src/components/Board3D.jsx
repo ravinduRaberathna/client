@@ -132,15 +132,16 @@ export default function Board3D({
     >
       <Canvas
         camera={{
-          position: isMobile ? [0, 11.5, 7.8] : [0, 8.8, 5.8],
-          fov: isMobile ? 54 : 44
+          // Mobile එකේදී කැමරාව වඩාත් උඩට සහ කෝණගතව (Top-Down Angled) පිහිටුවා ඇත
+          position: isMobile ? [0, 14.5, 6.2] : [0, 8.8, 5.8],
+          fov: isMobile ? 60 : 44
         }}
         shadows
         style={{ width: '100%', height: '100%' }}
       >
         <ambientLight intensity={0.7} />
         <directionalLight
-          position={[5, 12, 6]}
+          position={[5, 14, 6]}
           intensity={2.0}
           castShadow
           shadow-mapSize-width={2048}
@@ -148,17 +149,17 @@ export default function Board3D({
         />
         <pointLight position={[-6, 8, -6]} intensity={0.9} color="#ffffff" />
         <pointLight position={[6, 8, 6]} intensity={0.9} color="#e2e8f0" />
-        <pointLight position={[0, 10, 0]} intensity={0.5} color="#ffffff" />
+        <pointLight position={[0, 12, 0]} intensity={0.5} color="#ffffff" />
 
         <OrbitControls
           enablePan={false}
           minPolarAngle={Math.PI / 6}
-          maxPolarAngle={Math.PI / 2.2}
+          maxPolarAngle={Math.PI / 2.1}
           minDistance={5}
-          maxDistance={15}
+          maxDistance={18}
         />
 
-        <Center>
+        <Center position={[0, isMobile ? 0.2 : 0, 0]}>
           <RoundedBox args={[8.8, 0.28, 8.8]} radius={0.06} smoothness={4} position={[0, -0.16, 0]}>
             <meshStandardMaterial
               color="#090b10"
@@ -208,13 +209,13 @@ export default function Board3D({
       <div
         style={{
           position: 'absolute',
-          bottom: 8,
+          bottom: 6,
           left: '50%',
           transform: 'translateX(-50%)',
-          background: 'rgba(15, 23, 42, 0.8)',
-          backdropFilter: 'blur(10px)',
+          background: 'rgba(15, 23, 42, 0.85)',
+          backdropFilter: 'blur(8px)',
           border: '1px solid rgba(255, 255, 255, 0.1)',
-          padding: '3px 12px',
+          padding: '2px 10px',
           borderRadius: '20px',
           fontSize: '9px',
           color: '#cbd5e1',
