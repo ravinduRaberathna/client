@@ -11,7 +11,7 @@ import { sounds } from './utils/audio';
 
 
 
-const socket = io('https://server-production-836b.up.railway.app', {
+const socket = io('https://web-production-b7ad7.up.railway.app', {
   transports: ['websocket', 'polling'],
   autoConnect: true
 });
