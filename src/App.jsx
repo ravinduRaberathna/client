@@ -5,11 +5,8 @@ import Navbar from './components/Navbar';
 import HomeHub from './components/HomeHub';
 import Board3D from './components/Board3D';
 import HandTracker from './components/HandTracker';
-import { calculateValidMoves, checkKingPromotion, getGameStats } from './utils/gameLogic';
+import { calculateValidMoves, calculateCapturesOnly, checkKingPromotion, getGameStats } from './utils/gameLogic';
 import { sounds } from './utils/audio';
-
-
-
 
 const socket = io('https://web-production-b7ad7.up.railway.app', {
   transports: ['websocket', 'polling'],
@@ -48,6 +45,7 @@ export default function App() {
   const [moveLogs, setMoveLogs] = useState([]);
   const [cursorPos, setCursorPos] = useState({ x: -100, y: -100 });
   const [isPinching, setIsPinching] = useState(false);
+  const [isMultiJumping, setIsMultiJumping] = useState(false);
 
   const stats = getGameStats(boardState);
 
@@ -68,6 +66,7 @@ export default function App() {
       setCurrentTurn(nextTurn);
       setSelectedPiece(null);
       setValidMoves([]);
+      setIsMultiJumping(false);
 
       if (isKing) sounds.playKing();
       else if (isCapture) sounds.playCapture();
@@ -95,7 +94,7 @@ export default function App() {
   };
 
   const handlePieceClick = (row, col) => {
-    if (stats.winner || currentTurn !== myColor) return;
+    if (stats.winner || currentTurn !== myColor || isMultiJumping) return;
     const piece = boardState[row][col];
     if (piece && piece.color === myColor) {
       setSelectedPiece({ row, col });
@@ -128,25 +127,55 @@ export default function App() {
       else if (isCapture) sounds.playCapture();
       else sounds.playMove();
 
-      const nextTurn = currentTurn === 'red' ? 'white' : 'red';
-      const logMsg = `${myColor.toUpperCase()} moved (${selectedPiece.row},${selectedPiece.col}) → (${row},${col}) ${isCapture ? '⚔️' : ''} ${justBecameKing ? '👑' : ''}`;
+      // Check if chain jumps are available from new landing spot
+      let furtherCaptures = [];
+      if (isCapture) {
+        furtherCaptures = calculateCapturesOnly(newBoard, row, col);
+      }
 
-      setBoardState(newBoard);
-      setSelectedPiece(null);
-      setValidMoves([]);
-      setCurrentTurn(nextTurn);
-      setMoveLogs(prev => [logMsg, ...prev].slice(0, 15));
+      if (furtherCaptures.length > 0) {
+        // Continue turn for multi-jump
+        setBoardState(newBoard);
+        setSelectedPiece({ row, col });
+        setValidMoves(furtherCaptures);
+        setIsMultiJumping(true);
 
-      socket.emit('make_move', {
-        roomId,
-        moveData: { 
-          newBoard, 
-          nextTurn, 
-          logMsg, 
-          isCapture, 
-          isKing: justBecameKing 
-        }
-      });
+        const partialLog = `${myColor.toUpperCase()} jumped to (${row},${col}) ⚔️ [Chain Jump!]`;
+        setMoveLogs(prev => [partialLog, ...prev].slice(0, 15));
+
+        socket.emit('make_move', {
+          roomId,
+          moveData: { 
+            newBoard, 
+            nextTurn: currentTurn, // Keep same turn
+            logMsg: partialLog, 
+            isCapture: true, 
+            isKing: justBecameKing 
+          }
+        });
+      } else {
+        // Complete turn and switch
+        const nextTurn = currentTurn === 'red' ? 'white' : 'red';
+        const logMsg = `${myColor.toUpperCase()} moved to (${row},${col}) ${isCapture ? '⚔️' : ''} ${justBecameKing ? '👑' : ''}`;
+
+        setBoardState(newBoard);
+        setSelectedPiece(null);
+        setValidMoves([]);
+        setIsMultiJumping(false);
+        setCurrentTurn(nextTurn);
+        setMoveLogs(prev => [logMsg, ...prev].slice(0, 15));
+
+        socket.emit('make_move', {
+          roomId,
+          moveData: { 
+            newBoard, 
+            nextTurn, 
+            logMsg, 
+            isCapture, 
+            isKing: justBecameKing 
+          }
+        });
+      }
     }
   };
 
@@ -217,7 +246,6 @@ export default function App() {
           ) : (
             <div style={{ padding: '16px', maxWidth: '1400px', margin: '0 auto' }}>
               
-              {/* Responsive HUD Grid */}
               <div className="hud-grid">
                 <div className="hud-card" style={{ 
                   display: 'flex', 
@@ -244,11 +272,11 @@ export default function App() {
                     borderRadius: '20px', 
                     fontSize: '11px', 
                     fontWeight: '800',
-                    background: isMyTurn ? 'rgba(16, 185, 129, 0.2)' : 'rgba(234, 179, 8, 0.15)',
-                    color: isMyTurn ? '#10b981' : '#eab308',
-                    border: `1px solid ${isMyTurn ? '#10b981' : '#eab308'}`
+                    background: isMultiJumping ? 'rgba(239, 68, 68, 0.2)' : isMyTurn ? 'rgba(16, 185, 129, 0.2)' : 'rgba(234, 179, 8, 0.15)',
+                    color: isMultiJumping ? '#f87171' : isMyTurn ? '#10b981' : '#eab308',
+                    border: `1px solid ${isMultiJumping ? '#ef4444' : isMyTurn ? '#10b981' : '#eab308'}`
                   }}>
-                    {isMyTurn ? '⚡ YOUR TURN' : "⏳ OPPONENT"}
+                    {isMultiJumping ? '⚡ CHAIN JUMP!' : isMyTurn ? '⚡ YOUR TURN' : "⏳ OPPONENT"}
                   </span>
                   <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>Room: <strong>{roomId}</strong></div>
                 </div>
@@ -285,7 +313,6 @@ export default function App() {
                 )}
               </AnimatePresence>
 
-              {/* Responsive Arena Layout */}
               <div className="arena-grid">
                 <Board3D 
                   boardState={boardState}
