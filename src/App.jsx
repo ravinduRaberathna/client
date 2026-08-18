@@ -8,14 +8,13 @@ import HandTracker from './components/HandTracker';
 import { calculateValidMoves, checkKingPromotion, getGameStats } from './utils/gameLogic';
 import { sounds } from './utils/audio';
 
-import io from 'socket.io-client';
+
 
 const socket = io('https://server-production-836b.up.railway.app', {
   path: '/socket.io',
   transports: ['websocket', 'polling'],
   autoConnect: true
 });
-
 const createInitialBoard = () => {
   const board = Array(8).fill(null).map(() => Array(8).fill(null));
   let pieceIdCounter = 1;
