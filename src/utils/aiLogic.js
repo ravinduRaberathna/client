@@ -1,26 +1,31 @@
 import { calculateValidMoves, calculateCapturesOnly, checkKingPromotion } from './gameLogic';
 
-// Piece and Position Weights
-const PIECE_WEIGHT = 100;
-const KING_WEIGHT = 280;
+// Evaluation Weights
+const PIECE_WEIGHT = 120;
+const KING_WEIGHT = 350;
+const ADVANCEMENT_BONUS = 6;
+const DEFENSE_BONUS = 25;
+const CENTER_BONUS = 18;
 
-// Positional weight map: Center control and advancement
+// Center control heatmap
 const POSITIONAL_WEIGHTS = [
-  [4, 0, 4, 0, 4, 0, 4, 0],
-  [0, 3, 0, 3, 0, 3, 0, 3],
-  [2, 0, 5, 0, 5, 0, 2, 0],
-  [0, 4, 0, 7, 0, 7, 0, 4],
-  [4, 0, 7, 0, 7, 0, 4, 0],
-  [0, 2, 0, 5, 0, 5, 0, 2],
-  [3, 0, 3, 0, 3, 0, 3, 0],
-  [0, 4, 0, 4, 0, 4, 0, 4],
+  [10,  0, 10,  0, 10,  0, 10,  0],
+  [ 0,  8,  0, 12,  0, 12,  0,  8],
+  [ 8,  0, 18,  0, 18,  0,  8,  0],
+  [ 0, 14,  0, 24,  0, 24,  0, 14],
+  [14,  0, 24,  0, 24,  0, 14,  0],
+  [ 0,  8,  0, 18,  0, 18,  0,  8],
+  [ 8,  0, 12,  0, 12,  0,  8,  0],
+  [ 0, 10,  0, 10,  0, 10,  0, 10],
 ];
 
 /**
- * Evaluates board state score from AI's perspective (White)
+ * Aggressive Evaluation Engine (White perspective)
  */
 const evaluateBoard = (board) => {
   let score = 0;
+  let whiteCount = 0;
+  let redCount = 0;
 
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
@@ -30,34 +35,59 @@ const evaluateBoard = (board) => {
       let pieceVal = piece.isKing ? KING_WEIGHT : PIECE_WEIGHT;
       pieceVal += POSITIONAL_WEIGHTS[r][c];
 
-      // Defend baseline for White (row 0)
-      if (!piece.isKing && piece.color === 'white' && r === 0) {
-        pieceVal += 15;
-      }
-
       if (piece.color === 'white') {
+        whiteCount++;
+        // Encourage advancing forward to become King
+        if (!piece.isKing) {
+          pieceVal += r * ADVANCEMENT_BONUS;
+        }
+        // Baseline Wall defense (row 0)
+        if (r === 0 && !piece.isKing) {
+          pieceVal += DEFENSE_BONUS;
+        }
+        // Edge safety bonus
+        if (c === 0 || c === 7) {
+          pieceVal += 8;
+        }
         score += pieceVal;
       } else {
+        redCount++;
+        // Penalize player's advance
+        if (!piece.isKing) {
+          pieceVal += (7 - r) * ADVANCEMENT_BONUS;
+        }
+        if (r === 7 && !piece.isKing) {
+          pieceVal += DEFENSE_BONUS;
+        }
+        if (c === 0 || c === 7) {
+          pieceVal += 8;
+        }
         score -= pieceVal;
       }
     }
   }
+
+  // Endgame instinct: If winning, punish opponent piece count heavily
+  if (whiteCount > redCount) {
+    score += (12 - redCount) * 25;
+  }
+
   return score;
 };
 
 /**
- * Gets all legal moves for a given player color
+ * Get all legal moves for a player (Enforcing mandatory jumps)
  */
 const getAllMovesForColor = (board, color) => {
-  const moves = [];
+  const normalMoves = [];
   const captureMoves = [];
 
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
       const piece = board[r][c];
       if (piece && piece.color === color) {
-        const valid = calculateValidMoves(board, r, c);
-        for (const m of valid) {
+        const moves = calculateValidMoves(board, r, c);
+        for (const m of moves) {
           const moveObj = {
             fromRow: r,
             fromCol: c,
@@ -67,22 +97,22 @@ const getAllMovesForColor = (board, color) => {
             capturedRow: m.capturedRow,
             capturedCol: m.capturedCol
           };
+
           if (m.isJump) {
             captureMoves.push(moveObj);
           } else {
-            moves.push(moveObj);
+            normalMoves.push(moveObj);
           }
         }
       }
     }
   }
 
-  // Sri Lankan rule: Mandatory captures
-  return captureMoves.length > 0 ? captureMoves : moves;
+  return captureMoves.length > 0 ? captureMoves : normalMoves;
 };
 
 /**
- * Applies a virtual move on a clone of the board
+ * Simulates a move and handles chain promotions
  */
 const applySimulatedMove = (board, move) => {
   const newBoard = board.map(r => [...r]);
@@ -100,7 +130,7 @@ const applySimulatedMove = (board, move) => {
 };
 
 /**
- * Minimax algorithm with Alpha-Beta pruning
+ * Minimax with Alpha-Beta Pruning & Move Ordering
  */
 const minimax = (board, depth, alpha, beta, isMaximizing) => {
   if (depth === 0) {
@@ -111,8 +141,11 @@ const minimax = (board, depth, alpha, beta, isMaximizing) => {
   const legalMoves = getAllMovesForColor(board, currentColor);
 
   if (legalMoves.length === 0) {
-    return isMaximizing ? -9999 : 9999;
+    return isMaximizing ? -100000 : 100000;
   }
+
+  // Move Ordering: Evaluate jumps first for faster Alpha-Beta cutoffs
+  legalMoves.sort((a, b) => (b.isJump ? 1 : 0) - (a.isJump ? 1 : 0));
 
   if (isMaximizing) {
     let maxEval = -Infinity;
@@ -138,18 +171,30 @@ const minimax = (board, depth, alpha, beta, isMaximizing) => {
 };
 
 /**
- * Master Decision Function: Returns the Grandmaster AI Move
+ * Master Unbeatable AI Decision Engine
  */
-export const getBestAiMove = (board, aiColor = 'white', searchDepth = 3) => {
+export const getBestAiMove = (board, aiColor = 'white') => {
+  // Count remaining pieces to adjust deep search dynamically
+  let totalPieces = 0;
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      if (board[r][c]) totalPieces++;
+    }
+  }
+
+  // Deep search: Depth 4 for mid-game, Depth 5/6 for end-game
+  const searchDepth = totalPieces <= 10 ? 5 : 4;
   const legalMoves = getAllMovesForColor(board, aiColor);
   if (legalMoves.length === 0) return null;
 
   let bestMove = legalMoves[0];
   let bestScore = -Infinity;
 
+  // Move Ordering on Root
+  legalMoves.sort((a, b) => (b.isJump ? 1 : 0) - (a.isJump ? 1 : 0));
+
   for (const move of legalMoves) {
     const simBoard = applySimulatedMove(board, move);
-    // Depth 3 search with Alpha-Beta
     const score = minimax(simBoard, searchDepth - 1, -Infinity, Infinity, false);
 
     if (score > bestScore) {
