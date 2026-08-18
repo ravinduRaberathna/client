@@ -112,7 +112,7 @@ export default function Board3D({
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
+      setIsMobile(window.innerWidth < 850);
     };
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -126,15 +126,15 @@ export default function Board3D({
         height: '100%',
         position: 'relative',
         background: 'radial-gradient(ellipse at center, #0b0f19 0%, #03050a 100%)',
-        borderRadius: '16px',
+        borderRadius: '14px',
         overflow: 'hidden'
       }}
     >
       <Canvas
         camera={{
-          // Mobile එකේදී කැමරාව වඩාත් උඩට සහ කෝණගතව (Top-Down Angled) පිහිටුවා ඇත
-          position: isMobile ? [0, 14.5, 6.2] : [0, 8.8, 5.8],
-          fov: isMobile ? 60 : 44
+          // Mobile එකේදී වඩාත් Top-Down Angled විදියට Focus කර ඇත
+          position: isMobile ? [0, 15.5, 5.0] : [0, 8.8, 5.8],
+          fov: isMobile ? 58 : 44
         }}
         shadows
         style={{ width: '100%', height: '100%' }}
@@ -155,11 +155,11 @@ export default function Board3D({
           enablePan={false}
           minPolarAngle={Math.PI / 6}
           maxPolarAngle={Math.PI / 2.1}
-          minDistance={5}
+          minDistance={4.5}
           maxDistance={18}
         />
 
-        <Center position={[0, isMobile ? 0.2 : 0, 0]}>
+        <Center position={[0, isMobile ? 0.25 : 0, 0]}>
           <RoundedBox args={[8.8, 0.28, 8.8]} radius={0.06} smoothness={4} position={[0, -0.16, 0]}>
             <meshStandardMaterial
               color="#090b10"
@@ -205,27 +205,6 @@ export default function Board3D({
           )}
         </Center>
       </Canvas>
-
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 6,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'rgba(15, 23, 42, 0.85)',
-          backdropFilter: 'blur(8px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          padding: '2px 10px',
-          borderRadius: '20px',
-          fontSize: '9px',
-          color: '#cbd5e1',
-          pointerEvents: 'none',
-          letterSpacing: '0.5px',
-          whiteSpace: 'nowrap'
-        }}
-      >
-        🖱️ <strong>Touch / Drag:</strong> Rotate • <strong>Pinch:</strong> Zoom
-      </div>
     </div>
   );
 }
