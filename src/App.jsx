@@ -12,7 +12,7 @@ import { sounds } from './utils/audio';
 import io from 'socket.io-client';
 
 const socket = io('https://server-production-836b.up.railway.app', {
-  transports: ['polling', 'websocket'],
+  transports: ['websocket', 'polling'],
   autoConnect: true
 });
 
