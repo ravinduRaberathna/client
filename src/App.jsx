@@ -5,11 +5,12 @@ import Navbar from './components/Navbar';
 import HomeHub from './components/HomeHub';
 import Board3D from './components/Board3D';
 import HandTracker from './components/HandTracker';
+import TankGame from './components/TankGame';
 import { calculateValidMoves, calculateCapturesOnly, checkKingPromotion, getGameStats } from './utils/gameLogic';
 import { getBestAiMove } from './utils/aiLogic';
 import { sounds } from './utils/audio';
 
-const socket = io('https://web-production-b7ad7.up.railway.app', {
+const socket = io('https://server-production-836b.up.railway.app', {
   transports: ['websocket', 'polling'],
   autoConnect: true
 });
@@ -35,7 +36,7 @@ const createInitialBoard = () => {
 export default function App() {
   const [currentView, setCurrentView] = useState('home');
   const [inLobby, setInLobby] = useState(true);
-  const [gameMode, setGameMode] = useState('multi'); // 'multi' or 'ai'
+  const [gameMode, setGameMode] = useState('multi'); // 'multi' | 'ai'
   const [roomId, setRoomId] = useState('');
   const [myColor, setMyColor] = useState('red');
 
@@ -83,7 +84,7 @@ export default function App() {
     };
   }, []);
 
-  // AI Turn Handling
+  // AI Turn Handling for Daam Game
   useEffect(() => {
     if (gameMode === 'ai' && !inLobby && currentTurn === 'white' && !stats.winner) {
       const timer = setTimeout(() => {
@@ -126,7 +127,7 @@ export default function App() {
       const logMsg = `AI jumped to (${aiMove.toRow},${aiMove.toCol}) ⚔️ [Chain Jump!]`;
       setBoardState(newBoard);
       setMoveLogs(prev => [logMsg, ...prev].slice(0, 15));
-      // Trigger next AI jump
+
       setTimeout(() => {
         const chainBoard = newBoard.map(r => [...r]);
         const chainPiece = { ...chainBoard[aiMove.toRow][aiMove.toCol] };
@@ -258,12 +259,20 @@ export default function App() {
     <div style={{ width: '100vw', minHeight: '100vh', backgroundColor: '#070b14', color: '#f8fafc' }}>
       <Navbar onNavigate={setCurrentView} activeTab={currentView} />
 
+      {/* Home Hub View */}
       {currentView === 'home' && (
         <HomeHub onSelectGame={(gameId) => {
           if (gameId === 'daam') setCurrentView('daam');
+          if (gameId === 'tank') setCurrentView('tank');
         }} />
       )}
 
+      {/* Tank Arena 2D View */}
+      {currentView === 'tank' && (
+        <TankGame onBackToHub={() => setCurrentView('home')} />
+      )}
+
+      {/* 3D Daam View */}
       {currentView === 'daam' && (
         <>
           <div 
@@ -291,12 +300,11 @@ export default function App() {
                 style={{ background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(16px)', padding: '32px 24px', borderRadius: '24px', border: '1px solid rgba(56, 189, 248, 0.25)', width: '100%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.6)' }}
               >
                 <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'linear-gradient(135deg, #0284c7, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', margin: '0 auto 14px', boxShadow: '0 0 20px rgba(56, 189, 248, 0.4)' }}>
-                  ⚔️
+                  ♟️
                 </div>
-                <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#f8fafc', marginBottom: '6px' }}>Select Game Mode</h2>
-                <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '20px' }}>Play against Smart AI Bot or Challenge a Friend Online</p>
+                <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#f8fafc', marginBottom: '6px' }}>3D Daam Arena</h2>
+                <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '20px' }}>Play against AI Bot or Challenge a Friend Online</p>
 
-                {/* Single Player AI Button */}
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -312,11 +320,10 @@ export default function App() {
                   <div style={{ flex: 1, height: '1px', background: '#334155' }}></div>
                 </div>
 
-                {/* Multiplayer Form */}
                 <form onSubmit={handleJoinOnlineRoom} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <input
                     type="text"
-                    placeholder="Enter Custom Room ID (e.g. SL_ARENA)"
+                    placeholder="Enter Room Code (e.g. SL_ARENA)"
                     value={roomId}
                     onChange={(e) => setRoomId(e.target.value)}
                     style={{ padding: '12px 16px', borderRadius: '12px', border: '1px solid #334155', background: '#020617', color: '#fff', fontSize: '14px', outline: 'none' }}
@@ -331,6 +338,13 @@ export default function App() {
                     🌐 Enter Online Match
                   </motion.button>
                 </form>
+
+                <button
+                  onClick={() => setCurrentView('home')}
+                  style={{ marginTop: '16px', background: 'transparent', border: 'none', color: '#64748b', fontSize: '12px', cursor: 'pointer' }}
+                >
+                  ← Back to Game Hub
+                </button>
               </motion.div>
             </div>
           ) : (
