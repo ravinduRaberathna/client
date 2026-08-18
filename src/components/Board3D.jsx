@@ -126,22 +126,22 @@ export default function Board3D({
         height: '100%',
         position: 'relative',
         background: 'radial-gradient(ellipse at center, #0b0f19 0%, #03050a 100%)',
-        borderRadius: '14px',
+        borderRadius: '12px',
         overflow: 'hidden'
       }}
     >
       <Canvas
         camera={{
-          // Mobile එකේදී වඩාත් Top-Down Angled විදියට Focus කර ඇත
-          position: isMobile ? [0, 15.5, 5.0] : [0, 8.8, 5.8],
-          fov: isMobile ? 58 : 44
+          // උස අඩු Frame එකට ගැලපෙන පරිදි ඉහළ සිට සෘජු කෝණයකින් Camera Focus සකසා ඇත
+          position: isMobile ? [0, 16.8, 3.8] : [0, 11.5, 4.5],
+          fov: isMobile ? 54 : 42
         }}
         shadows
         style={{ width: '100%', height: '100%' }}
       >
-        <ambientLight intensity={0.7} />
+        <ambientLight intensity={0.75} />
         <directionalLight
-          position={[5, 14, 6]}
+          position={[5, 15, 5]}
           intensity={2.0}
           castShadow
           shadow-mapSize-width={2048}
@@ -149,17 +149,16 @@ export default function Board3D({
         />
         <pointLight position={[-6, 8, -6]} intensity={0.9} color="#ffffff" />
         <pointLight position={[6, 8, 6]} intensity={0.9} color="#e2e8f0" />
-        <pointLight position={[0, 12, 0]} intensity={0.5} color="#ffffff" />
 
         <OrbitControls
           enablePan={false}
           minPolarAngle={Math.PI / 6}
           maxPolarAngle={Math.PI / 2.1}
-          minDistance={4.5}
+          minDistance={4.0}
           maxDistance={18}
         />
 
-        <Center position={[0, isMobile ? 0.25 : 0, 0]}>
+        <Center position={[0, isMobile ? 0.15 : 0, 0]}>
           <RoundedBox args={[8.8, 0.28, 8.8]} radius={0.06} smoothness={4} position={[0, -0.16, 0]}>
             <meshStandardMaterial
               color="#090b10"
