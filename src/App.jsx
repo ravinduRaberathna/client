@@ -267,9 +267,9 @@ export default function App() {
         }} />
       )}
 
-      {/* Tank Arena 2D View */}
+      {/* Tank Arena 2D View (with 4-Player Socket) */}
       {currentView === 'tank' && (
-        <TankGame onBackToHub={() => setCurrentView('home')} />
+        <TankGame socket={socket} onBackToHub={() => setCurrentView('home')} />
       )}
 
       {/* 3D Daam View */}
