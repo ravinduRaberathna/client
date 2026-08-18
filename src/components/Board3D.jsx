@@ -6,18 +6,18 @@ function Piece({ position, color, isKing, isSelected, onClick }) {
   const isRed = color === 'red';
 
   return (
-    <group position={[position[0], isKing ? 0.36 : 0.22, position[2]]}>
+    <group position={[position[0], isKing ? 0.35 : 0.22, position[2]]}>
       <mesh
         onClick={(e) => {
           e.stopPropagation();
           onClick();
         }}
       >
-        <cylinderGeometry args={[0.39, 0.43, isKing ? 0.38 : 0.24, 48]} />
+        <cylinderGeometry args={[0.38, 0.42, isKing ? 0.38 : 0.24, 40]} />
         <meshStandardMaterial
           color={isRed ? '#e11d48' : '#f8fafc'}
           metalness={isRed ? 0.4 : 0.7}
-          roughness={0.15}
+          roughness={0.18}
           emissive={
             isSelected
               ? (isRed ? '#ff0055' : '#00f0ff')
@@ -28,7 +28,7 @@ function Piece({ position, color, isKing, isSelected, onClick }) {
       </mesh>
 
       <mesh position={[0, (isKing ? 0.38 : 0.24) / 2 + 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.12, 0.28, 36]} />
+        <ringGeometry args={[0.12, 0.26, 32]} />
         <meshStandardMaterial
           color={isRed ? '#fda4af' : '#cbd5e1'}
           metalness={0.8}
@@ -38,7 +38,7 @@ function Piece({ position, color, isKing, isSelected, onClick }) {
 
       {isKing && (
         <mesh position={[0, 0.22, 0]}>
-          <torusGeometry args={[0.24, 0.06, 20, 36]} />
+          <torusGeometry args={[0.22, 0.05, 16, 32]} />
           <meshStandardMaterial
             color="#fbbf24"
             metalness={0.95}
@@ -61,7 +61,7 @@ function Tile({ x, z, isDark, isValidMove, isSelected, onPieceClick, onTileClick
     <group position={[x - 3.5, 0, z - 3.5]}>
       <RoundedBox
         args={[0.95, 0.14, 0.95]}
-        radius={0.025}
+        radius={0.02}
         smoothness={4}
         position={[0, 0, 0]}
         onClick={(e) => {
@@ -124,44 +124,40 @@ export default function Board3D({
       style={{
         width: '100%',
         height: '100%',
-        maxHeight: isMobile ? '230px' : '100%',
-        minHeight: isMobile ? '200px' : '380px',
         position: 'relative',
-        background: 'radial-gradient(ellipse at center, #0b0f19 0%, #03050a 100%)',
-        borderRadius: '12px',
+        background: 'radial-gradient(ellipse at center, #0f172a 0%, #03050a 100%)',
+        borderRadius: '16px',
         overflow: 'hidden'
       }}
     >
       <Canvas
         camera={{
-          // කැමරා කෝණය උස අඩු Frame එකට ගැලපෙන සේ වඩාත් සෘජු Top-Down ලෙස පිහිටුවා ඇත
-          position: isMobile ? [0, 15.2, 2.2] : [0, 11.2, 3.2],
-          fov: isMobile ? 50 : 40
+          position: isMobile ? [0, 13.5, 3.8] : [0, 9.2, 4.8],
+          fov: isMobile ? 48 : 42
         }}
         shadows
         style={{ width: '100%', height: '100%' }}
       >
         <ambientLight intensity={0.75} />
         <directionalLight
-          position={[5, 15, 5]}
+          position={[5, 14, 5]}
           intensity={2.0}
           castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
+          shadow-mapSize-width={1024}
+          shadow-mapSize-height={1024}
         />
-        <pointLight position={[-6, 8, -6]} intensity={0.9} color="#ffffff" />
-        <pointLight position={[6, 8, 6]} intensity={0.9} color="#e2e8f0" />
+        <pointLight position={[-6, 8, -6]} intensity={0.8} color="#ffffff" />
+        <pointLight position={[6, 8, 6]} intensity={0.8} color="#e2e8f0" />
 
         <OrbitControls
           enablePan={false}
           minPolarAngle={Math.PI / 6}
-          maxPolarAngle={Math.PI / 2.1}
-          minDistance={3.5}
-          maxDistance={18}
+          maxPolarAngle={Math.PI / 2.2}
+          minDistance={4.0}
+          maxDistance={16}
         />
 
-        {/* Board එක තිරයේ උඩට (Z: -0.6, Y: 0.4) ගෙන ඇත */}
-        <Center position={[0, isMobile ? 0.4 : 0.2, isMobile ? -0.6 : -0.3]}>
+        <Center position={[0, 0, 0]}>
           <RoundedBox args={[8.8, 0.28, 8.8]} radius={0.06} smoothness={4} position={[0, -0.16, 0]}>
             <meshStandardMaterial
               color="#090b10"
