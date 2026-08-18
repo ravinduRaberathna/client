@@ -1,235 +1,160 @@
-import React, { useEffect, useRef } from 'react';
-import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import React, { useRef } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, Float, Center } from '@react-three/drei';
 import * as THREE from 'three';
 
-function HandController({ cursorPos, isPinching, onTileClick, onPieceClick }) {
-  const { camera, scene, gl } = useThree();
-  const lastPinchRef = useRef(false);
-
-  useEffect(() => {
-    if (!cursorPos || cursorPos.x < 0) return;
-
-    const rect = gl.domElement.getBoundingClientRect();
-    if (
-      cursorPos.x < rect.left ||
-      cursorPos.x > rect.right ||
-      cursorPos.y < rect.top ||
-      cursorPos.y > rect.bottom
-    ) {
-      return;
-    }
-
-    const mouse = new THREE.Vector2(
-      ((cursorPos.x - rect.left) / rect.width) * 2 - 1,
-      -((cursorPos.y - rect.top) / rect.height) * 2 + 1
-    );
-
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(mouse, camera);
-
-    const intersects = raycaster.intersectObjects(scene.children, true);
-
-    let target = null;
-    for (let hit of intersects) {
-      let obj = hit.object;
-      while (obj && !obj.userData?.type && obj.parent) {
-        obj = obj.parent;
-      }
-      if (obj && obj.userData?.type) {
-        target = obj.userData;
-        break;
-      }
-    }
-
-    if (isPinching && !lastPinchRef.current && target) {
-      if (target.type === 'piece') {
-        onPieceClick(target.row, target.col);
-      } else if (target.type === 'tile') {
-        onTileClick(target.row, target.col);
-      }
-    }
-
-    lastPinchRef.current = isPinching;
-  }, [cursorPos, isPinching]);
-
-  return null;
-}
-
-function Tile({ position, row, col, isDark, onClick, isSelected, isHighlighted }) {
-  let color = isDark ? '#0f172a' : '#cbd5e1';
-  if (isSelected) color = '#38bdf8';
-  if (isHighlighted) color = '#10b981';
+// 3D Piece Component
+function Piece({ position, color, isKing, isSelected, onClick }) {
+  const meshRef = useRef();
 
   return (
-    <mesh 
-      position={position} 
-      onClick={onClick} 
-      receiveShadow
-      userData={{ type: 'tile', row, col }}
+    <mesh
+      ref={meshRef}
+      position={[position[0], isKing ? 0.35 : 0.22, position[2]]}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
     >
-      <boxGeometry args={[1, 0.22, 1]} />
-      <meshStandardMaterial 
-        color={color} 
-        roughness={0.4} 
-        metalness={0.1}
-        emissive={isHighlighted ? '#059669' : '#000000'}
-        emissiveIntensity={isHighlighted ? 0.4 : 0}
+      <cylinderGeometry args={[0.38, 0.42, isKing ? 0.45 : 0.28, 32]} />
+      <meshStandardMaterial
+        color={color === 'red' ? '#ef4444' : '#f8fafc'}
+        metalness={0.6}
+        roughness={0.25}
+        emissive={isSelected ? (color === 'red' ? '#ff0055' : '#00f0ff') : (isKing ? (color === 'red' ? '#7f1d1d' : '#94a3b8') : '#000000')}
+        emissiveIntensity={isSelected ? 0.8 : (isKing ? 0.4 : 0)}
       />
+      {/* King Crown Ring Top */}
+      {isKing && (
+        <mesh position={[0, 0.25, 0]}>
+          <torusGeometry args={[0.22, 0.06, 16, 32]} />
+          <meshStandardMaterial color="#fbbf24" metalness={0.9} roughness={0.1} emissive="#f59e0b" emissiveIntensity={0.5} />
+        </mesh>
+      )}
     </mesh>
   );
 }
 
-function AnimatedPiece({ row, col, color, isKing, isSelected, onClick }) {
-  const groupRef = useRef();
-  const pieceColor = color === 'red' ? '#ef4444' : '#f8fafc';
-
-  const targetX = col - 3.5;
-  const targetZ = row - 3.5;
-  const targetY = isSelected ? 0.45 : 0.22;
-
-  useFrame((state, delta) => {
-    if (!groupRef.current) return;
-
-    const current = groupRef.current.position;
-    const speed = delta * 14;
-
-    current.x = THREE.MathUtils.lerp(current.x, targetX, speed);
-    current.z = THREE.MathUtils.lerp(current.z, targetZ, speed);
-
-    const distToTarget = Math.hypot(targetX - current.x, targetZ - current.z);
-    const hopHeight = Math.sin(Math.min(distToTarget * Math.PI, Math.PI)) * 0.35;
-
-    current.y = THREE.MathUtils.lerp(current.y, targetY + hopHeight, speed * 1.2);
-  });
-
+// 3D Tile Component
+function Tile({ x, z, isDark, isValidMove, isSelected, onPieceClick, onTileClick, piece }) {
   return (
-    <group 
-      ref={groupRef}
-      position={[targetX, targetY, targetZ]}
-      onClick={onClick}
-      userData={{ type: 'piece', row, col }}
-    >
-      <mesh visible={false} userData={{ type: 'piece', row, col }}>
-        <boxGeometry args={[0.9, 0.7, 0.9]} />
-      </mesh>
-
-      <mesh castShadow userData={{ type: 'piece', row, col }}>
-        <cylinderGeometry args={[0.38, 0.38, 0.22, 32]} />
-        <meshStandardMaterial 
-          color={pieceColor} 
-          roughness={0.2}
-          metalness={0.3}
-          emissive={isSelected ? '#38bdf8' : '#000000'}
-          emissiveIntensity={isSelected ? 0.8 : 0}
+    <group position={[x - 3.5, 0, z - 3.5]}>
+      {/* Board Square Tile */}
+      <mesh
+        position={[0, 0, 0]}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (piece) {
+            onPieceClick(z, x);
+          } else if (isValidMove) {
+            onTileClick(z, x);
+          }
+        }}
+      >
+        <boxGeometry args={[0.96, 0.15, 0.96]} />
+        <meshStandardMaterial
+          color={isValidMove ? '#10b981' : isSelected ? '#38bdf8' : isDark ? '#0f172a' : '#334155'}
+          roughness={0.3}
+          metalness={0.4}
+          emissive={isValidMove ? '#059669' : isSelected ? '#0284c7' : '#000000'}
+          emissiveIntensity={isValidMove ? 0.7 : isSelected ? 0.6 : 0}
         />
       </mesh>
 
-      {isKing && (
-        <mesh position={[0, 0.16, 0]} userData={{ type: 'piece', row, col }}>
-          <cylinderGeometry args={[0.24, 0.26, 0.09, 24]} />
-          <meshStandardMaterial color="#fbbf24" metalness={0.8} roughness={0.2} emissive="#d97706" emissiveIntensity={0.3} />
-        </mesh>
+      {/* Piece Render */}
+      {piece && (
+        <Piece
+          position={[0, 0, 0]}
+          color={piece.color}
+          isKing={piece.isKing}
+          isSelected={isSelected}
+          onClick={() => onPieceClick(z, x)}
+        />
       )}
     </group>
   );
 }
 
-export default function Board3D({ 
-  boardState, 
-  selectedPiece, 
-  validMoves = [], 
-  onTileClick, 
+export default function Board3D({
+  boardState,
+  selectedPiece,
+  validMoves,
   onPieceClick,
-  cursorPos,
-  isPinching
+  onTileClick
 }) {
-  const pieces = [];
-  for (let r = 0; r < 8; r++) {
-    for (let c = 0; c < 8; c++) {
-      const p = boardState[r][c];
-      if (p) {
-        pieces.push({
-          id: p.id,
-          row: r,
-          col: c,
-          color: p.color,
-          isKing: p.isKing,
-          isSelected: selectedPiece?.row === r && selectedPiece?.col === c
-        });
-      }
-    }
-  }
-
   return (
-    <div className="board-container">
-      <Canvas shadows camera={{ position: [0, 9, 8], fov: 45 }}>
-        <ambientLight intensity={0.7} />
-        <directionalLight 
-          position={[6, 14, 8]} 
-          intensity={1.6} 
-          castShadow 
-          shadow-mapSize-width={2048} 
-          shadow-mapSize-height={2048} 
+    <div style={{ width: '100%', height: '680px', position: 'relative', background: 'radial-gradient(circle at center, #0a0f1d 0%, #03060f 100%)' }}>
+      <Canvas
+        camera={{ position: [0, 8.2, 6.8], fov: 42 }}
+        shadows
+        style={{ width: '100%', height: '100%' }}
+      >
+        {/* Lights */}
+        <ambientLight intensity={0.8} />
+        <directionalLight position={[6, 12, 6]} intensity={1.5} castShadow />
+        <pointLight position={[-6, 8, -6]} intensity={0.9} color="#38bdf8" />
+        <pointLight position={[6, 8, 6]} intensity={0.9} color="#ef4444" />
+
+        {/* Orbit Controls (Drag to rotate, Scroll to zoom) */}
+        <OrbitControls
+          enablePan={false}
+          minPolarAngle={Math.PI / 6}
+          maxPolarAngle={Math.PI / 2.3}
+          minDistance={6}
+          maxDistance={14}
         />
-        <pointLight position={[-5, 7, -5]} intensity={0.8} color="#38bdf8" />
-        <pointLight position={[5, 4, 5]} intensity={0.5} color="#ec4899" />
 
-        <HandController 
-          cursorPos={cursorPos}
-          isPinching={isPinching}
-          onTileClick={onTileClick}
-          onPieceClick={onPieceClick}
-        />
+        <Center>
+          {/* Main Board Base Plate */}
+          <mesh position={[0, -0.15, 0]}>
+            <boxGeometry args={[8.4, 0.25, 8.4]} />
+            <meshStandardMaterial
+              color="#020617"
+              metalness={0.8}
+              roughness={0.2}
+              envMapIntensity={1}
+            />
+          </mesh>
 
-        <mesh position={[0, -0.15, 0]} receiveShadow>
-          <boxGeometry args={[8.8, 0.35, 8.8]} />
-          <meshStandardMaterial color="#1e293b" metalness={0.6} roughness={0.3} />
-        </mesh>
+          {/* Neon Border Rim */}
+          <mesh position={[0, -0.05, 0]}>
+            <boxGeometry args={[8.55, 0.08, 8.55]} />
+            <meshStandardMaterial
+              color="#38bdf8"
+              emissive="#0284c7"
+              emissiveIntensity={0.6}
+            />
+          </mesh>
 
-        <group position={[-3.5, 0, -3.5]}>
-          {Array.from({ length: 8 }).map((_, row) =>
-            Array.from({ length: 8 }).map((_, col) => {
-              const isDark = (row + col) % 2 === 1;
-              const isSelected = selectedPiece?.row === row && selectedPiece?.col === col;
-              const isHighlighted = validMoves.some(m => m.row === row && m.col === col);
+          {/* 8x8 Board Matrix */}
+          {boardState.map((row, rIdx) =>
+            row.map((piece, cIdx) => {
+              const isDark = (rIdx + cIdx) % 2 === 1;
+              const isSelected = selectedPiece && selectedPiece.row === rIdx && selectedPiece.col === cIdx;
+              const isValid = validMoves.some((m) => m.row === rIdx && m.col === cIdx);
 
               return (
                 <Tile
-                  key={`tile-${row}-${col}`}
-                  position={[col, 0, row]}
-                  row={row}
-                  col={col}
+                  key={`${rIdx}-${cIdx}`}
+                  x={cIdx}
+                  z={rIdx}
                   isDark={isDark}
                   isSelected={isSelected}
-                  isHighlighted={isHighlighted}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onTileClick(row, col);
-                  }}
+                  isValidMove={isValid}
+                  piece={piece}
+                  onPieceClick={onPieceClick}
+                  onTileClick={onTileClick}
                 />
               );
             })
           )}
-        </group>
-
-        {pieces.map((p) => (
-          <AnimatedPiece
-            key={p.id}
-            row={p.row}
-            col={p.col}
-            color={p.color}
-            isKing={p.isKing}
-            isSelected={p.isSelected}
-            onClick={(e) => {
-              e.stopPropagation();
-              onPieceClick(p.row, p.col);
-            }}
-          />
-        ))}
-
-        <OrbitControls maxPolarAngle={Math.PI / 2.15} minDistance={6} maxDistance={15} />
+        </Center>
       </Canvas>
+
+      {/* Interactive Helper Hint */}
+      <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)', border: '1px solid rgba(56, 189, 248, 0.2)', padding: '5px 14px', borderRadius: '20px', fontSize: '11px', color: '#94a3b8', pointerEvents: 'none', letterSpacing: '0.5px' }}>
+        🖱️ <strong>Left Click + Drag:</strong> Rotate 3D View | <strong>Scroll:</strong> Zoom
+      </div>
     </div>
   );
 }
