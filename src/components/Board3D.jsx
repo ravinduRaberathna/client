@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Center, RoundedBox } from '@react-three/drei';
 
@@ -108,6 +108,17 @@ export default function Board3D({
   onPieceClick,
   onTileClick
 }) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <div
       style={{
@@ -120,11 +131,14 @@ export default function Board3D({
       }}
     >
       <Canvas
-        camera={{ position: [0, 8.5, 5.5], fov: 43 }}
+        camera={{
+          position: isMobile ? [0, 11.5, 7.8] : [0, 8.8, 5.8],
+          fov: isMobile ? 54 : 44
+        }}
         shadows
         style={{ width: '100%', height: '100%' }}
       >
-        <ambientLight intensity={0.65} />
+        <ambientLight intensity={0.7} />
         <directionalLight
           position={[5, 12, 6]}
           intensity={2.0}
@@ -139,9 +153,9 @@ export default function Board3D({
         <OrbitControls
           enablePan={false}
           minPolarAngle={Math.PI / 6}
-          maxPolarAngle={Math.PI / 2.3}
-          minDistance={5.2}
-          maxDistance={12}
+          maxPolarAngle={Math.PI / 2.2}
+          minDistance={5}
+          maxDistance={15}
         />
 
         <Center>
@@ -194,21 +208,22 @@ export default function Board3D({
       <div
         style={{
           position: 'absolute',
-          bottom: 10,
+          bottom: 8,
           left: '50%',
           transform: 'translateX(-50%)',
           background: 'rgba(15, 23, 42, 0.8)',
           backdropFilter: 'blur(10px)',
           border: '1px solid rgba(255, 255, 255, 0.1)',
-          padding: '4px 14px',
-          borderRadius: '30px',
-          fontSize: '10px',
+          padding: '3px 12px',
+          borderRadius: '20px',
+          fontSize: '9px',
           color: '#cbd5e1',
           pointerEvents: 'none',
-          letterSpacing: '0.5px'
+          letterSpacing: '0.5px',
+          whiteSpace: 'nowrap'
         }}
       >
-        🖱️ <strong>Drag:</strong> Rotate • <strong>Scroll:</strong> Zoom
+        🖱️ <strong>Touch / Drag:</strong> Rotate • <strong>Pinch:</strong> Zoom
       </div>
     </div>
   );
