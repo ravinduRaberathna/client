@@ -9,7 +9,9 @@ import { calculateValidMoves, checkKingPromotion, getGameStats } from './utils/g
 import { sounds } from './utils/audio';
 
 const socket = io('https://server-production-836b.up.railway.app', {
-  transports: ['websocket', 'polling'],
+  path: '/socket.io',
+  transports: ['polling', 'websocket'], // Polling first, then upgrade to websocket
+  reconnectionAttempts: 5,
   autoConnect: true
 });
 
