@@ -1,7 +1,42 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function HomeHub({ onSelectGame }) {
+  const [mousePos, setMousePos] = useState({ x: -500, y: -500 });
+  const [touchRipples, setTouchRipples] = useState([]);
+
+  // Mouse Glow Listener (Desktop)
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+  };
+
+  // Touch Ripple Listener (Mobile)
+  const handleTouchStart = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const touch = e.touches[0];
+    const newRipple = {
+      id: Date.now() + Math.random(),
+      x: touch.clientX - rect.left,
+      y: touch.clientY - rect.top
+    };
+
+    setTouchRipples((prev) => [...prev.slice(-4), newRipple]);
+  };
+
+  // Clean old ripples
+  useEffect(() => {
+    if (touchRipples.length > 0) {
+      const timer = setTimeout(() => {
+        setTouchRipples((prev) => prev.slice(1));
+      }, 700);
+      return () => clearTimeout(timer);
+    }
+  }, [touchRipples]);
+
   const games = [
     {
       id: 'daam',
@@ -33,13 +68,69 @@ export default function HomeHub({ onSelectGame }) {
   ];
 
   return (
-    <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '30px 16px', minHeight: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-      
+    <div
+      onMouseMove={handleMouseMove}
+      onTouchStart={handleTouchStart}
+      style={{
+        position: 'relative',
+        maxWidth: '1240px',
+        margin: '0 auto',
+        padding: '30px 16px',
+        minHeight: 'calc(100vh - 80px)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        overflow: 'hidden'
+      }}
+    >
+      {/* Desktop Dynamic Mouse Glow Spotlight */}
+      <div
+        style={{
+          position: 'absolute',
+          left: mousePos.x,
+          top: mousePos.y,
+          width: '550px',
+          height: '550px',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(56, 189, 248, 0.14) 0%, rgba(99, 102, 241, 0.06) 45%, transparent 70%)',
+          transform: 'translate(-50%, -50%)',
+          pointerEvents: 'none',
+          zIndex: 0,
+          transition: 'left 0.05s ease-out, top 0.05s ease-out'
+        }}
+      />
+
+      {/* Mobile Touch Ripple Pulses */}
+      <AnimatePresence>
+        {touchRipples.map((r) => (
+          <motion.div
+            key={r.id}
+            initial={{ scale: 0.2, opacity: 0.8 }}
+            animate={{ scale: 3.5, opacity: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.7, ease: 'easeOut' }}
+            style={{
+              position: 'absolute',
+              left: r.x,
+              top: r.y,
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(0, 240, 255, 0.4) 0%, rgba(56, 189, 248, 0.2) 50%, transparent 80%)',
+              border: '1px solid rgba(56, 189, 248, 0.6)',
+              transform: 'translate(-50%, -50%)',
+              pointerEvents: 'none',
+              zIndex: 0
+            }}
+          />
+        ))}
+      </AnimatePresence>
+
       {/* Hero Banner Header */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{ textAlign: 'center', marginBottom: '36px' }}
+        style={{ textAlign: 'center', marginBottom: '36px', position: 'relative', zIndex: 1 }}
       >
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', borderRadius: '30px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', marginBottom: '14px' }}>
           <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#38bdf8', boxShadow: '0 0 10px #38bdf8' }} />
@@ -55,7 +146,7 @@ export default function HomeHub({ onSelectGame }) {
       </motion.div>
 
       {/* Responsive Games Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: '22px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: '22px', position: 'relative', zIndex: 1 }}>
         {games.map((g, idx) => (
           <motion.div
             key={g.id}
@@ -79,7 +170,6 @@ export default function HomeHub({ onSelectGame }) {
               overflow: 'hidden'
             }}
           >
-            {/* Top Glow Accent */}
             <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: '2px', background: `linear-gradient(90deg, transparent, ${g.badgeColor}, transparent)` }} />
 
             <div>
