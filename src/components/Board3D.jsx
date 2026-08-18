@@ -124,6 +124,8 @@ export default function Board3D({
       style={{
         width: '100%',
         height: '100%',
+        maxHeight: isMobile ? '230px' : '100%',
+        minHeight: isMobile ? '200px' : '380px',
         position: 'relative',
         background: 'radial-gradient(ellipse at center, #0b0f19 0%, #03050a 100%)',
         borderRadius: '12px',
@@ -132,9 +134,9 @@ export default function Board3D({
     >
       <Canvas
         camera={{
-          // උස අඩු Frame එකට ගැලපෙන පරිදි ඉහළ සිට සෘජු කෝණයකින් Camera Focus සකසා ඇත
-          position: isMobile ? [0, 16.8, 3.8] : [0, 11.5, 4.5],
-          fov: isMobile ? 54 : 42
+          // කැමරා කෝණය උස අඩු Frame එකට ගැලපෙන සේ වඩාත් සෘජු Top-Down ලෙස පිහිටුවා ඇත
+          position: isMobile ? [0, 15.2, 2.2] : [0, 11.2, 3.2],
+          fov: isMobile ? 50 : 40
         }}
         shadows
         style={{ width: '100%', height: '100%' }}
@@ -154,11 +156,12 @@ export default function Board3D({
           enablePan={false}
           minPolarAngle={Math.PI / 6}
           maxPolarAngle={Math.PI / 2.1}
-          minDistance={4.0}
+          minDistance={3.5}
           maxDistance={18}
         />
 
-        <Center position={[0, isMobile ? 0.15 : 0, 0]}>
+        {/* Board එක තිරයේ උඩට (Z: -0.6, Y: 0.4) ගෙන ඇත */}
+        <Center position={[0, isMobile ? 0.4 : 0.2, isMobile ? -0.6 : -0.3]}>
           <RoundedBox args={[8.8, 0.28, 8.8]} radius={0.06} smoothness={4} position={[0, -0.16, 0]}>
             <meshStandardMaterial
               color="#090b10"
