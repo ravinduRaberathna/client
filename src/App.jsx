@@ -8,10 +8,11 @@ import HandTracker from './components/HandTracker';
 import { calculateValidMoves, checkKingPromotion, getGameStats } from './utils/gameLogic';
 import { sounds } from './utils/audio';
 
+import io from 'socket.io-client';
+
 const socket = io('https://server-production-836b.up.railway.app', {
   path: '/socket.io',
-  transports: ['polling', 'websocket'], // Polling first, then upgrade to websocket
-  reconnectionAttempts: 5,
+  transports: ['websocket', 'polling'],
   autoConnect: true
 });
 
