@@ -10,7 +10,7 @@ import { calculateValidMoves, calculateCapturesOnly, checkKingPromotion, getGame
 import { getBestAiMove } from './utils/aiLogic';
 import { sounds } from './utils/audio';
 
-const socket = io('https://web-production-b7ad7.up.railway.app', {
+const socket = io('https://server-production-836b.up.railway.app', {
   transports: ['websocket', 'polling'],
   autoConnect: true
 });
@@ -50,6 +50,8 @@ export default function App() {
   const [isMultiJumping, setIsMultiJumping] = useState(false);
 
   const stats = getGameStats(boardState);
+  const isWinner = stats.winner && stats.winner.toLowerCase() === myColor.toLowerCase();
+  const isGameOver = Boolean(stats.winner);
 
   useEffect(() => {
     socket.on('player_assigned', ({ color, roomId }) => {
@@ -164,6 +166,15 @@ export default function App() {
     socket.emit('join_room', { roomId: roomId.trim(), playerName: 'Player' });
   };
 
+  const handleResetGame = () => {
+    setBoardState(createInitialBoard());
+    setCurrentTurn('red');
+    setSelectedPiece(null);
+    setValidMoves([]);
+    setIsMultiJumping(false);
+    setMoveLogs(['New Arena Match Initiated.']);
+  };
+
   const handlePieceClick = (row, col) => {
     if (stats.winner || currentTurn !== myColor || isMultiJumping) return;
     const piece = boardState[row][col];
@@ -242,9 +253,10 @@ export default function App() {
   const isMyTurn = currentTurn === myColor;
 
   return (
-    <div style={{ width: '100vw', minHeight: '100vh', backgroundColor: '#070b14', color: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100vw', minHeight: '100vh', backgroundColor: '#070b14', color: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative' }}>
       <Navbar onNavigate={setCurrentView} activeTab={currentView} />
 
+      {/* 1. Home View */}
       {currentView === 'home' && (
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <HomeHub onSelectGame={(gameId) => {
@@ -254,14 +266,16 @@ export default function App() {
         </div>
       )}
 
+      {/* 2. Tank Game View */}
       {currentView === 'tank' && (
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <TankGame socket={socket} onBackToHub={() => setCurrentView('home')} />
         </div>
       )}
 
+      {/* 3. 3D Daam View */}
       {currentView === 'daam' && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '6px 12px 12px 12px', maxWidth: '1400px', width: '100%', margin: '0 auto' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '6px 12px 12px 12px', maxWidth: '1400px', width: '100%', margin: '0 auto', position: 'relative' }}>
           
           {/* Hand Tracker Cursor */}
           <div 
@@ -423,7 +437,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Main Balanced Layout */}
+              {/* Main Game Layout */}
               <div className="daam-main-grid">
                 <div className="daam-board-panel">
                   <Board3D 
@@ -471,6 +485,178 @@ export default function App() {
 
             </div>
           )}
+
+          {/* 🌟 CINEMATIC VICTORY / DEFEAT MODAL OVERLAY */}
+          <AnimatePresence>
+            {isGameOver && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  background: isWinner 
+                    ? 'radial-gradient(circle at center, rgba(6, 78, 59, 0.88) 0%, rgba(5, 8, 17, 0.96) 80%)'
+                    : 'radial-gradient(circle at center, rgba(136, 19, 55, 0.88) 0%, rgba(5, 8, 17, 0.96) 80%)',
+                  backdropFilter: 'blur(14px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 10000,
+                  padding: '20px'
+                }}
+              >
+                <motion.div
+                  initial={{ scale: 0.7, y: 30, opacity: 0 }}
+                  animate={{ scale: 1, y: 0, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  transition={{ type: 'spring', damping: 18, stiffness: 220 }}
+                  style={{
+                    background: 'rgba(15, 23, 42, 0.92)',
+                    backdropFilter: 'blur(20px)',
+                    border: `2px solid ${isWinner ? '#10b981' : '#ef4444'}`,
+                    borderRadius: '28px',
+                    padding: '36px 28px',
+                    textAlign: 'center',
+                    maxWidth: '420px',
+                    width: '100%',
+                    boxShadow: isWinner 
+                      ? '0 0 60px rgba(16, 185, 129, 0.45), 0 20px 50px rgba(0,0,0,0.8)' 
+                      : '0 0 60px rgba(239, 68, 68, 0.45), 0 20px 50px rgba(0,0,0,0.8)',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {/* Top Ambient Glow Line */}
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: '15%',
+                    right: '15%',
+                    height: '3px',
+                    background: isWinner 
+                      ? 'linear-gradient(90deg, transparent, #10b981, transparent)'
+                      : 'linear-gradient(90deg, transparent, #ef4444, transparent)'
+                  }} />
+
+                  {/* Animated Badge Icon */}
+                  <motion.div
+                    animate={isWinner 
+                      ? { rotate: [0, -10, 10, -5, 5, 0], scale: [1, 1.15, 1] } 
+                      : { x: [-4, 4, -3, 3, 0], opacity: [0.8, 1, 0.8] }}
+                    transition={{ duration: isWinner ? 1.4 : 0.6, repeat: Infinity, repeatDelay: isWinner ? 2 : 1 }}
+                    style={{
+                      width: '76px',
+                      height: '76px',
+                      borderRadius: '24px',
+                      background: isWinner ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                      border: `1px solid ${isWinner ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '38px',
+                      margin: '0 auto 16px',
+                      boxShadow: isWinner ? '0 0 30px rgba(16, 185, 129, 0.35)' : '0 0 30px rgba(239, 68, 68, 0.35)'
+                    }}
+                  >
+                    {isWinner ? '🏆' : '💀'}
+                  </motion.div>
+
+                  {/* Outcome Title Banner */}
+                  <motion.h1
+                    initial={{ y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.1 }}
+                    style={{
+                      fontSize: '28px',
+                      fontWeight: '900',
+                      letterSpacing: '1px',
+                      marginBottom: '8px',
+                      color: isWinner ? '#34d399' : '#f87171',
+                      textShadow: isWinner ? '0 0 20px rgba(52, 211, 153, 0.5)' : '0 0 20px rgba(248, 113, 113, 0.5)'
+                    }}
+                  >
+                    {isWinner ? 'VICTORY SECURED!' : 'ARENA DEFEAT'}
+                  </motion.h1>
+
+                  <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: '1.5', marginBottom: '22px' }}>
+                    {isWinner 
+                      ? (gameMode === 'ai' ? 'You completely outmaneuvered the Grandmaster AI!' : 'You crushed your online opponent and claimed the arena crown!')
+                      : (gameMode === 'ai' ? 'The Grandmaster AI captured all your forces.' : 'Your opposing rival claimed victory in this match.')}
+                  </p>
+
+                  {/* Match Stats Summary Pill */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-around',
+                    background: 'rgba(2, 6, 23, 0.6)',
+                    borderRadius: '14px',
+                    padding: '10px 14px',
+                    marginBottom: '24px',
+                    border: '1px solid rgba(255, 255, 255, 0.06)'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '10px', color: '#64748b' }}>RED REMAINING</div>
+                      <div style={{ fontSize: '14px', fontWeight: '800', color: '#ef4444' }}>{stats.redCount} Pieces</div>
+                    </div>
+                    <div style={{ width: '1px', background: '#1e293b' }} />
+                    <div>
+                      <div style={{ fontSize: '10px', color: '#64748b' }}>WHITE REMAINING</div>
+                      <div style={{ fontSize: '14px', fontWeight: '800', color: '#f8fafc' }}>{stats.whiteCount} Pieces</div>
+                    </div>
+                  </div>
+
+                  {/* Modal Action Buttons */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <motion.button
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={handleResetGame}
+                      style={{
+                        padding: '13px',
+                        borderRadius: '14px',
+                        border: 'none',
+                        background: isWinner 
+                          ? 'linear-gradient(135deg, #10b981, #059669)'
+                          : 'linear-gradient(135deg, #ef4444, #dc2626)',
+                        color: '#ffffff',
+                        fontSize: '14px',
+                        fontWeight: '900',
+                        cursor: 'pointer',
+                        letterSpacing: '0.5px',
+                        boxShadow: isWinner 
+                          ? '0 8px 25px rgba(16, 185, 129, 0.4)' 
+                          : '0 8px 25px rgba(239, 68, 68, 0.4)'
+                      }}
+                    >
+                      🔄 Play Again (Rematch)
+                    </motion.button>
+
+                    <button
+                      onClick={() => {
+                        setInLobby(true);
+                        handleResetGame();
+                      }}
+                      style={{
+                        padding: '11px',
+                        borderRadius: '12px',
+                        border: '1px solid #334155',
+                        background: 'transparent',
+                        color: '#94a3b8',
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ← Back to Arena Lobby
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
         </div>
       )}
     </div>
