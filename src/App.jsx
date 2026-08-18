@@ -6,9 +6,10 @@ import HomeHub from './components/HomeHub';
 import Board3D from './components/Board3D';
 import HandTracker from './components/HandTracker';
 import { calculateValidMoves, calculateCapturesOnly, checkKingPromotion, getGameStats } from './utils/gameLogic';
+import { getBestAiMove } from './utils/aiLogic';
 import { sounds } from './utils/audio';
 
-const socket = io('https://web-production-b7ad7.up.railway.app', {
+const socket = io('https://server-production-836b.up.railway.app', {
   transports: ['websocket', 'polling'],
   autoConnect: true
 });
@@ -34,9 +35,9 @@ const createInitialBoard = () => {
 export default function App() {
   const [currentView, setCurrentView] = useState('home');
   const [inLobby, setInLobby] = useState(true);
+  const [gameMode, setGameMode] = useState('multi'); // 'multi' or 'ai'
   const [roomId, setRoomId] = useState('');
-  const [myColor, setMyColor] = useState(null);
-  const [playerCount, setPlayerCount] = useState(0);
+  const [myColor, setMyColor] = useState('red');
 
   const [boardState, setBoardState] = useState(createInitialBoard);
   const [currentTurn, setCurrentTurn] = useState('red');
@@ -54,11 +55,7 @@ export default function App() {
       setMyColor(color);
       setRoomId(roomId);
       setInLobby(false);
-      setMoveLogs([`Match joined. You play as ${color.toUpperCase()}`]);
-    });
-
-    socket.on('room_update', (room) => {
-      setPlayerCount(room.players.length);
+      setMoveLogs([`Online match joined. You play as ${color.toUpperCase()}`]);
     });
 
     socket.on('opponent_moved', ({ newBoard, nextTurn, logMsg, isCapture, isKing }) => {
@@ -81,15 +78,90 @@ export default function App() {
 
     return () => {
       socket.off('player_assigned');
-      socket.off('room_update');
       socket.off('opponent_moved');
       socket.off('room_full');
     };
   }, []);
 
-  const handleJoinRoom = (e) => {
+  // AI Turn Handling
+  useEffect(() => {
+    if (gameMode === 'ai' && !inLobby && currentTurn === 'white' && !stats.winner) {
+      const timer = setTimeout(() => {
+        executeAiTurn();
+      }, 700);
+      return () => clearTimeout(timer);
+    }
+  }, [currentTurn, gameMode, inLobby, boardState, stats.winner]);
+
+  const executeAiTurn = () => {
+    const aiMove = getBestAiMove(boardState, 'white');
+    if (!aiMove) return;
+
+    const newBoard = boardState.map(r => [...r]);
+    const piece = { ...newBoard[aiMove.fromRow][aiMove.fromCol] };
+
+    const wasKing = piece.isKing;
+    piece.isKing = checkKingPromotion(piece, aiMove.toRow);
+
+    newBoard[aiMove.toRow][aiMove.toCol] = piece;
+    newBoard[aiMove.fromRow][aiMove.fromCol] = null;
+
+    if (aiMove.isJump) {
+      newBoard[aiMove.capturedRow][aiMove.capturedCol] = null;
+    }
+
+    const justBecameKing = !wasKing && piece.isKing;
+    if (justBecameKing) sounds.playKing();
+    else if (aiMove.isJump) sounds.playCapture();
+    else sounds.playMove();
+
+    // Check for AI Multi-jump
+    let furtherCaptures = [];
+    if (aiMove.isJump) {
+      furtherCaptures = calculateCapturesOnly(newBoard, aiMove.toRow, aiMove.toCol);
+    }
+
+    if (furtherCaptures.length > 0) {
+      const nextJump = furtherCaptures[0];
+      const logMsg = `AI jumped to (${aiMove.toRow},${aiMove.toCol}) ⚔️ [Chain Jump!]`;
+      setBoardState(newBoard);
+      setMoveLogs(prev => [logMsg, ...prev].slice(0, 15));
+      // Trigger next AI jump
+      setTimeout(() => {
+        const chainBoard = newBoard.map(r => [...r]);
+        const chainPiece = { ...chainBoard[aiMove.toRow][aiMove.toCol] };
+        chainPiece.isKing = checkKingPromotion(chainPiece, nextJump.row);
+
+        chainBoard[nextJump.row][nextJump.col] = chainPiece;
+        chainBoard[aiMove.toRow][aiMove.toCol] = null;
+        chainBoard[nextJump.capturedRow][nextJump.capturedCol] = null;
+
+        sounds.playCapture();
+        setBoardState(chainBoard);
+        setCurrentTurn('red');
+        setMoveLogs(prev => [`AI completed chain jump to (${nextJump.row},${nextJump.col}) ⚔️`, ...prev].slice(0, 15));
+      }, 500);
+    } else {
+      const logMsg = `AI moved to (${aiMove.toRow},${aiMove.toCol}) ${aiMove.isJump ? '⚔️' : ''} ${justBecameKing ? '👑' : ''}`;
+      setBoardState(newBoard);
+      setCurrentTurn('red');
+      setMoveLogs(prev => [logMsg, ...prev].slice(0, 15));
+    }
+  };
+
+  const handleStartAiGame = () => {
+    setGameMode('ai');
+    setMyColor('red');
+    setInLobby(false);
+    setBoardState(createInitialBoard());
+    setCurrentTurn('red');
+    setMoveLogs(['Single Player vs AI Bot started. You play as RED.']);
+  };
+
+  const handleJoinOnlineRoom = (e) => {
     e.preventDefault();
     if (!roomId.trim()) return;
+    setGameMode('multi');
     socket.emit('join_room', { roomId: roomId.trim(), playerName: 'Player' });
   };
 
@@ -127,14 +199,12 @@ export default function App() {
       else if (isCapture) sounds.playCapture();
       else sounds.playMove();
 
-      // Check if chain jumps are available from new landing spot
       let furtherCaptures = [];
       if (isCapture) {
         furtherCaptures = calculateCapturesOnly(newBoard, row, col);
       }
 
       if (furtherCaptures.length > 0) {
-        // Continue turn for multi-jump
         setBoardState(newBoard);
         setSelectedPiece({ row, col });
         setValidMoves(furtherCaptures);
@@ -143,18 +213,19 @@ export default function App() {
         const partialLog = `${myColor.toUpperCase()} jumped to (${row},${col}) ⚔️ [Chain Jump!]`;
         setMoveLogs(prev => [partialLog, ...prev].slice(0, 15));
 
-        socket.emit('make_move', {
-          roomId,
-          moveData: { 
-            newBoard, 
-            nextTurn: currentTurn, // Keep same turn
-            logMsg: partialLog, 
-            isCapture: true, 
-            isKing: justBecameKing 
-          }
-        });
+        if (gameMode === 'multi') {
+          socket.emit('make_move', {
+            roomId,
+            moveData: { 
+              newBoard, 
+              nextTurn: currentTurn, 
+              logMsg: partialLog, 
+              isCapture: true, 
+              isKing: justBecameKing 
+            }
+          });
+        }
       } else {
-        // Complete turn and switch
         const nextTurn = currentTurn === 'red' ? 'white' : 'red';
         const logMsg = `${myColor.toUpperCase()} moved to (${row},${col}) ${isCapture ? '⚔️' : ''} ${justBecameKing ? '👑' : ''}`;
 
@@ -165,16 +236,18 @@ export default function App() {
         setCurrentTurn(nextTurn);
         setMoveLogs(prev => [logMsg, ...prev].slice(0, 15));
 
-        socket.emit('make_move', {
-          roomId,
-          moveData: { 
-            newBoard, 
-            nextTurn, 
-            logMsg, 
-            isCapture, 
-            isKing: justBecameKing 
-          }
-        });
+        if (gameMode === 'multi') {
+          socket.emit('make_move', {
+            roomId,
+            moveData: { 
+              newBoard, 
+              nextTurn, 
+              logMsg, 
+              isCapture, 
+              isKing: justBecameKing 
+            }
+          });
+        }
       }
     }
   };
@@ -215,30 +288,47 @@ export default function App() {
               <motion.div 
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                style={{ background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(16px)', padding: '32px 24px', borderRadius: '24px', border: '1px solid rgba(56, 189, 248, 0.25)', width: '100%', maxWidth: '380px', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.6)' }}
+                style={{ background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(16px)', padding: '32px 24px', borderRadius: '24px', border: '1px solid rgba(56, 189, 248, 0.25)', width: '100%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.6)' }}
               >
                 <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'linear-gradient(135deg, #0284c7, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', margin: '0 auto 14px', boxShadow: '0 0 20px rgba(56, 189, 248, 0.4)' }}>
                   ⚔️
                 </div>
-                <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#f8fafc', marginBottom: '8px' }}>1v1 Arena Match</h2>
-                <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '24px' }}>Enter a custom Room ID to battle online</p>
+                <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#f8fafc', marginBottom: '6px' }}>Select Game Mode</h2>
+                <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '20px' }}>Play against Smart AI Bot or Challenge a Friend Online</p>
 
-                <form onSubmit={handleJoinRoom} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {/* Single Player AI Button */}
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleStartAiGame}
+                  style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '1px solid #38bdf8', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', fontSize: '15px', fontWeight: '800', cursor: 'pointer', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  🤖 Play vs AI Bot (Single Player)
+                </motion.button>
+
+                <div style={{ display: 'flex', alignItems: 'center', margin: '14px 0', color: '#64748b', fontSize: '12px' }}>
+                  <div style={{ flex: 1, height: '1px', background: '#334155' }}></div>
+                  <span style={{ padding: '0 10px' }}>OR ONLINE MULTIPLAYER</span>
+                  <div style={{ flex: 1, height: '1px', background: '#334155' }}></div>
+                </div>
+
+                {/* Multiplayer Form */}
+                <form onSubmit={handleJoinOnlineRoom} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <input
                     type="text"
-                    placeholder="Enter Room Code (e.g. SL_PRO)"
+                    placeholder="Enter Custom Room ID (e.g. SL_ARENA)"
                     value={roomId}
                     onChange={(e) => setRoomId(e.target.value)}
-                    style={{ padding: '12px 16px', borderRadius: '12px', border: '1px solid #334155', background: '#020617', color: '#fff', fontSize: '15px', outline: 'none' }}
+                    style={{ padding: '12px 16px', borderRadius: '12px', border: '1px solid #334155', background: '#020617', color: '#fff', fontSize: '14px', outline: 'none' }}
                     required
                   />
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
-                    style={{ padding: '12px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #0284c7, #2563eb)', color: '#fff', fontSize: '15px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(2, 132, 199, 0.4)' }}
+                    style={{ padding: '12px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #0284c7, #2563eb)', color: '#fff', fontSize: '14px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(2, 132, 199, 0.4)' }}
                   >
-                    Enter Arena
+                    🌐 Enter Online Match
                   </motion.button>
                 </form>
               </motion.div>
@@ -276,9 +366,11 @@ export default function App() {
                     color: isMultiJumping ? '#f87171' : isMyTurn ? '#10b981' : '#eab308',
                     border: `1px solid ${isMultiJumping ? '#ef4444' : isMyTurn ? '#10b981' : '#eab308'}`
                   }}>
-                    {isMultiJumping ? '⚡ CHAIN JUMP!' : isMyTurn ? '⚡ YOUR TURN' : "⏳ OPPONENT"}
+                    {isMultiJumping ? '⚡ CHAIN JUMP!' : isMyTurn ? '⚡ YOUR TURN' : (gameMode === 'ai' ? "🤖 AI THINKING..." : "⏳ OPPONENT")}
                   </span>
-                  <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>Room: <strong>{roomId}</strong></div>
+                  <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
+                    Mode: <strong>{gameMode === 'ai' ? 'Single Player (vs AI)' : `Online Room: ${roomId}`}</strong>
+                  </div>
                 </div>
 
                 <div className="hud-card" style={{ 
@@ -292,11 +384,11 @@ export default function App() {
                   border: `1px solid ${currentTurn === 'white' ? '#f8fafc' : '#1e293b'}`
                 }}>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#f8fafc' }}>WHITE {myColor === 'white' ? '(You)' : ''}</div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#f8fafc' }}>WHITE {gameMode === 'ai' ? '(AI Bot)' : (myColor === 'white' ? '(You)' : '')}</div>
                     <div style={{ fontSize: '11px', color: '#94a3b8' }}>Pieces: <strong style={{ color: '#f8fafc' }}>{stats.whiteCount}</strong></div>
                   </div>
                   <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900' }}>
-                    ⚪
+                    {gameMode === 'ai' ? '🤖' : '⚪'}
                   </div>
                 </div>
               </div>
@@ -308,7 +400,7 @@ export default function App() {
                     animate={{ y: 0, opacity: 1 }}
                     style={{ marginBottom: '16px', padding: '14px', background: stats.winner.toLowerCase() === myColor ? 'linear-gradient(90deg, #059669, #10b981)' : 'linear-gradient(90deg, #b91c1c, #ef4444)', color: '#fff', textAlign: 'center', borderRadius: '14px', fontWeight: '800', fontSize: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
                   >
-                    🏆 VICTORY! {stats.winner === (myColor ? myColor.charAt(0).toUpperCase() + myColor.slice(1) : '') ? 'YOU WON THE MATCH!' : 'OPPONENT WON THE MATCH!'}
+                    🏆 VICTORY! {stats.winner === (myColor ? myColor.charAt(0).toUpperCase() + myColor.slice(1) : '') ? 'YOU WON THE MATCH!' : (gameMode === 'ai' ? 'AI BOT WON THE MATCH!' : 'OPPONENT WON THE MATCH!')}
                   </motion.div>
                 )}
               </AnimatePresence>
