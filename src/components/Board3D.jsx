@@ -1,7 +1,6 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Center, RoundedBox } from '@react-three/drei';
-import * as THREE from 'three';
 
 // 3D Luxury Piece Component
 function Piece({ position, color, isKing, isSelected, onClick }) {
@@ -19,9 +18,8 @@ function Piece({ position, color, isKing, isSelected, onClick }) {
         <cylinderGeometry args={[0.39, 0.43, isKing ? 0.38 : 0.24, 48]} />
         <meshStandardMaterial
           color={isRed ? '#e11d48' : '#f8fafc'}
-          metalness={isRed ? 0.65 : 0.85}
-          roughness={0.18}
-          envMapIntensity={1.8}
+          metalness={isRed ? 0.4 : 0.7}
+          roughness={0.15}
           emissive={
             isSelected
               ? (isRed ? '#ff0055' : '#00f0ff')
@@ -31,13 +29,13 @@ function Piece({ position, color, isKing, isSelected, onClick }) {
         />
       </mesh>
 
-      {/* Center Engraved Insignia Ring */}
+      {/* Inner Accent Ring */}
       <mesh position={[0, (isKing ? 0.38 : 0.24) / 2 + 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.12, 0.28, 36]} />
         <meshStandardMaterial
           color={isRed ? '#fda4af' : '#cbd5e1'}
-          metalness={0.9}
-          roughness={0.1}
+          metalness={0.8}
+          roughness={0.2}
         />
       </mesh>
 
@@ -58,14 +56,19 @@ function Piece({ position, color, isKing, isSelected, onClick }) {
   );
 }
 
-// 3D Chamfered Tile Component
+// 3D Black & White Reflective Tile Component
 function Tile({ x, z, isDark, isValidMove, isSelected, onPieceClick, onTileClick, piece }) {
+  // Tile Colors: Deep Obsidian Black vs Glossy Ceramic White
+  let tileColor = isDark ? '#111318' : '#f1f5f9';
+  if (isSelected) tileColor = '#0284c7';
+  if (isValidMove) tileColor = '#059669';
+
   return (
     <group position={[x - 3.5, 0, z - 3.5]}>
-      {/* High-Poly Beveled Tile */}
+      {/* High-Poly Beveled Tile with Subtle Reflective Surface */}
       <RoundedBox
-        args={[0.94, 0.14, 0.94]}
-        radius={0.03}
+        args={[0.95, 0.14, 0.95]}
+        radius={0.025}
         smoothness={4}
         position={[0, 0, 0]}
         onClick={(e) => {
@@ -78,27 +81,17 @@ function Tile({ x, z, isDark, isValidMove, isSelected, onPieceClick, onTileClick
         }}
       >
         <meshStandardMaterial
-          color={
+          color={tileColor}
+          metalness={isDark ? 0.25 : 0.1}
+          roughness={isDark ? 0.12 : 0.15}
+          emissive={
             isValidMove
               ? '#10b981'
               : isSelected
               ? '#38bdf8'
-              : isDark
-              ? '#0f172a'
-              : '#1e293b'
+              : '#000000'
           }
-          metalness={isDark ? 0.5 : 0.3}
-          roughness={isDark ? 0.25 : 0.4}
-          emissive={
-            isValidMove
-              ? '#059669'
-              : isSelected
-              ? '#0284c7'
-              : isDark
-              ? '#020617'
-              : '#0f172a'
-          }
-          emissiveIntensity={isValidMove ? 0.8 : isSelected ? 0.7 : 0.1}
+          emissiveIntensity={isValidMove ? 0.8 : isSelected ? 0.7 : 0}
         />
       </RoundedBox>
 
@@ -130,7 +123,7 @@ export default function Board3D({
         height: '100%',
         minHeight: '560px',
         position: 'relative',
-        background: 'radial-gradient(ellipse at center, #0d1527 0%, #03060f 100%)',
+        background: 'radial-gradient(ellipse at center, #0b0f19 0%, #03050a 100%)',
         borderRadius: '20px',
         overflow: 'hidden'
       }}
@@ -140,18 +133,19 @@ export default function Board3D({
         shadows
         style={{ width: '100%', height: '100%' }}
       >
-        {/* Studio Lighting Setup */}
-        <ambientLight intensity={0.7} />
+        {/* Cinematic Studio Lighting for Clean Reflections */}
+        <ambientLight intensity={0.65} />
         <directionalLight
-          position={[6, 14, 6]}
-          intensity={1.8}
+          position={[5, 12, 6]}
+          intensity={2.0}
           castShadow
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
         />
-        <pointLight position={[-8, 7, -6]} intensity={1.2} color="#38bdf8" />
-        <pointLight position={[8, 7, 6]} intensity={1.2} color="#f43f5e" />
-        <pointLight position={[0, -2, 0]} intensity={0.8} color="#6366f1" />
+        {/* Subtle Specular Highlights */}
+        <pointLight position={[-6, 8, -6]} intensity={0.9} color="#ffffff" />
+        <pointLight position={[6, 8, 6]} intensity={0.9} color="#e2e8f0" />
+        <pointLight position={[0, 10, 0]} intensity={0.5} color="#ffffff" />
 
         {/* Orbit Camera Rotation & Zoom */}
         <OrbitControls
@@ -163,37 +157,26 @@ export default function Board3D({
         />
 
         <Center>
-          {/* Main Dark Obsidian Base Plinth */}
-          <RoundedBox args={[8.8, 0.28, 8.8]} radius={0.08} smoothness={4} position={[0, -0.16, 0]}>
+          {/* Main Dark Obsidian / Wood Base Frame */}
+          <RoundedBox args={[8.8, 0.28, 8.8]} radius={0.06} smoothness={4} position={[0, -0.16, 0]}>
             <meshStandardMaterial
-              color="#070a12"
-              metalness={0.9}
-              roughness={0.15}
-              envMapIntensity={2.0}
+              color="#090b10"
+              metalness={0.3}
+              roughness={0.2}
             />
           </RoundedBox>
 
-          {/* Glowing Neon Tracing Rim */}
-          <mesh position={[0, -0.04, 0]}>
-            <boxGeometry args={[8.6, 0.04, 8.6]} />
+          {/* Minimalist Silver Inner Border Inset */}
+          <mesh position={[0, -0.03, 0]}>
+            <boxGeometry args={[8.65, 0.03, 8.65]} />
             <meshStandardMaterial
-              color="#38bdf8"
-              emissive="#0284c7"
-              emissiveIntensity={0.8}
-            />
-          </mesh>
-
-          {/* Outer Gold Accent Trim */}
-          <mesh position={[0, -0.06, 0]}>
-            <boxGeometry args={[8.74, 0.08, 8.74]} />
-            <meshStandardMaterial
-              color="#d97706"
-              metalness={0.95}
+              color="#cbd5e1"
+              metalness={0.8}
               roughness={0.2}
             />
           </mesh>
 
-          {/* 8x8 Board Matrix */}
+          {/* 8x8 Black & White Board Matrix */}
           {boardState.map((row, rIdx) =>
             row.map((piece, cIdx) => {
               const isDark = (rIdx + cIdx) % 2 === 1;
@@ -223,7 +206,7 @@ export default function Board3D({
         </Center>
       </Canvas>
 
-      {/* Floating Control Tip */}
+      {/* Control Tip */}
       <div
         style={{
           position: 'absolute',
@@ -232,7 +215,7 @@ export default function Board3D({
           transform: 'translateX(-50%)',
           background: 'rgba(15, 23, 42, 0.8)',
           backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(56, 189, 248, 0.25)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
           padding: '5px 16px',
           borderRadius: '30px',
           fontSize: '11px',
