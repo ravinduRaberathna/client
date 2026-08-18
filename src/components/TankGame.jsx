@@ -15,14 +15,14 @@ const INITIAL_BASES = [
 
 export default function TankGame({ socket, onBackToHub }) {
   const canvasRef = useRef(null);
-  const [gameState, setGameState] = useState('lobby'); // 'lobby' | 'playing' | 'gameover'
-  const [gameMode, setGameMode] = useState('single'); // 'single' | 'multi'
+  const [gameState, setGameState] = useState('lobby');
+  const [gameMode, setGameMode] = useState('single');
   const [roomId, setRoomId] = useState('');
   const [mySlot, setMySlot] = useState(0);
-  const [connectedPlayers, setConnectedPlayers] = useState([]);
   const [winner, setWinner] = useState(null);
   const [matchTime, setMatchTime] = useState(0);
   const [killFeed, setKillFeed] = useState([]);
+  const [isMobile, setIsMobile] = useState(false);
 
   const keysRef = useRef({});
   const gameLoopRef = useRef(null);
@@ -34,15 +34,24 @@ export default function TankGame({ socket, onBackToHub }) {
     tanks: [],
     bullets: [],
     particles: [],
-    powerups: [],
     treadMarks: [],
     walls: [],
     bases: [],
     matchStart: 0
   });
 
+  // Check mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 850 || 'ontouchstart' in window);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   const addFeed = (text) => {
-    setKillFeed(prev => [text, ...prev].slice(0, 4));
+    setKillFeed(prev => [text, ...prev].slice(0, 3));
   };
 
   const initMap = () => {
@@ -58,89 +67,21 @@ export default function TankGame({ socket, onBackToHub }) {
 
     brickGrid.forEach(b => walls.push({ ...b, hp: 90, maxHp: 90, isSteel: false }));
 
-    const steelBlocks = [
-      { x: 448, y: 265, w: 24, h: 70 }
-    ];
+    const steelBlocks = [{ x: 448, y: 265, w: 24, h: 70 }];
     steelBlocks.forEach(s => walls.push({ ...s, hp: 9999, maxHp: 9999, isSteel: true }));
 
     return walls;
   };
 
-  // Setup initial tanks configuration
   const buildInitialTanks = (mode, localSlot = 0) => {
     return [
-      {
-        id: 0,
-        isHuman: mode === 'single' ? true : localSlot === 0,
-        name: 'BLUE UNIT',
-        color: '#00f0ff',
-        x: 140,
-        y: 140,
-        angle: 0,
-        hp: 100,
-        maxHp: 100,
-        speed: 3.6,
-        respawnTimer: 0,
-        cooldown: 0,
-        shield: false,
-        doubleFire: false,
-        alive: true
-      },
-      {
-        id: 1,
-        isHuman: mode === 'single' ? false : localSlot === 1,
-        name: 'RED UNIT',
-        color: '#ff0055',
-        x: CANVAS_WIDTH - 140,
-        y: CANVAS_HEIGHT - 140,
-        angle: Math.PI,
-        hp: 100,
-        maxHp: 100,
-        speed: 2.4,
-        respawnTimer: 0,
-        cooldown: 0,
-        shield: false,
-        doubleFire: false,
-        alive: true
-      },
-      {
-        id: 2,
-        isHuman: mode === 'single' ? false : localSlot === 2,
-        name: 'GREEN UNIT',
-        color: '#00ff88',
-        x: CANVAS_WIDTH - 140,
-        y: 140,
-        angle: Math.PI / 2,
-        hp: 100,
-        maxHp: 100,
-        speed: 2.4,
-        respawnTimer: 0,
-        cooldown: 0,
-        shield: false,
-        doubleFire: false,
-        alive: true
-      },
-      {
-        id: 3,
-        isHuman: mode === 'single' ? false : localSlot === 3,
-        name: 'GOLD UNIT',
-        color: '#ffb700',
-        x: 140,
-        y: CANVAS_HEIGHT - 140,
-        angle: -Math.PI / 2,
-        hp: 100,
-        maxHp: 100,
-        speed: 2.4,
-        respawnTimer: 0,
-        cooldown: 0,
-        shield: false,
-        doubleFire: false,
-        alive: true
-      }
+      { id: 0, isHuman: mode === 'single' ? true : localSlot === 0, name: 'BLUE UNIT', color: '#00f0ff', x: 140, y: 140, angle: 0, hp: 100, maxHp: 100, speed: 3.6, respawnTimer: 0, cooldown: 0, alive: true },
+      { id: 1, isHuman: mode === 'single' ? false : localSlot === 1, name: 'RED UNIT', color: '#ff0055', x: CANVAS_WIDTH - 140, y: CANVAS_HEIGHT - 140, angle: Math.PI, hp: 100, maxHp: 100, speed: 2.4, respawnTimer: 0, cooldown: 0, alive: true },
+      { id: 2, isHuman: mode === 'single' ? false : localSlot === 2, name: 'GREEN UNIT', color: '#00ff88', x: CANVAS_WIDTH - 140, y: 140, angle: Math.PI / 2, hp: 100, maxHp: 100, speed: 2.4, respawnTimer: 0, cooldown: 0, alive: true },
+      { id: 3, isHuman: mode === 'single' ? false : localSlot === 3, name: 'GOLD UNIT', color: '#ffb700', x: 140, y: CANVAS_HEIGHT - 140, angle: -Math.PI / 2, hp: 100, maxHp: 100, speed: 2.4, respawnTimer: 0, cooldown: 0, alive: true }
     ];
   };
 
-  // Socket Multi-player Listeners
   useEffect(() => {
     if (!socket) return;
 
@@ -153,11 +94,7 @@ export default function TankGame({ socket, onBackToHub }) {
       setGameMode('multi');
 
       startMatch('multi', slot);
-      addFeed(`🎮 Assigned to ${unitName}. Multi-Arena Live!`);
-    });
-
-    socket.on('tank_room_update', (room) => {
-      setConnectedPlayers(room.players);
+      addFeed(`🎮 Assigned to ${unitName}`);
     });
 
     socket.on('tank_state_updated', ({ tankData }) => {
@@ -171,7 +108,6 @@ export default function TankGame({ socket, onBackToHub }) {
         remoteTank.angle = tankData.angle;
         remoteTank.hp = tankData.hp;
         remoteTank.alive = tankData.alive;
-        remoteTank.shield = tankData.shield;
       }
     });
 
@@ -191,12 +127,11 @@ export default function TankGame({ socket, onBackToHub }) {
     });
 
     socket.on('tank_room_full', () => {
-      alert('This Tank Arena room is full (Max 4 Players). Please join another room.');
+      alert('Room is full (Max 4 Players).');
     });
 
     return () => {
       socket.off('tank_player_assigned');
-      socket.off('tank_room_update');
       socket.off('tank_state_updated');
       socket.off('bullet_spawned');
       socket.off('core_damaged');
@@ -209,7 +144,6 @@ export default function TankGame({ socket, onBackToHub }) {
       tanks: buildInitialTanks(mode, slot),
       bullets: [],
       particles: [],
-      powerups: [],
       treadMarks: [],
       walls: initMap(),
       bases: JSON.parse(JSON.stringify(INITIAL_BASES)),
@@ -227,7 +161,6 @@ export default function TankGame({ socket, onBackToHub }) {
     mySlotRef.current = 0;
     setMySlot(0);
     startMatch('single', 0);
-    addFeed('Single Player Mode: Defend against 3 AI Cores');
   };
 
   const handleJoinMultiplayerRoom = (e) => {
@@ -235,11 +168,23 @@ export default function TankGame({ socket, onBackToHub }) {
     if (!roomId.trim() || !socket) return;
     socket.emit('join_tank_room', {
       roomId: roomId.trim(),
-      playerName: `Player_${Math.floor(Math.random() * 900 + 100)}`
+      playerName: `Pilot_${Math.floor(Math.random() * 900 + 100)}`
     });
   };
 
-  // Controls Listener
+  // Touch Virtual Controls Helpers
+  const handleTouchDir = (dir, isPressed) => {
+    if (dir === 'up') keysRef.current['KeyW'] = isPressed;
+    if (dir === 'down') keysRef.current['KeyS'] = isPressed;
+    if (dir === 'left') keysRef.current['KeyA'] = isPressed;
+    if (dir === 'right') keysRef.current['KeyD'] = isPressed;
+  };
+
+  const handleTouchFire = (isPressed) => {
+    keysRef.current['Space'] = isPressed;
+  };
+
+  // Keyboard Event Handlers
   useEffect(() => {
     const handleKeyDown = (e) => {
       const k = e.key.toLowerCase();
@@ -263,7 +208,7 @@ export default function TankGame({ socket, onBackToHub }) {
     };
   }, []);
 
-  // Main 60 FPS Loop
+  // Main 60 FPS Engine
   useEffect(() => {
     if (gameState !== 'playing') return;
 
@@ -271,7 +216,7 @@ export default function TankGame({ socket, onBackToHub }) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    const spawnExplosion = (x, y, color, count = 18, isShockwave = false) => {
+    const spawnExplosion = (x, y, color, count = 16, isShockwave = false) => {
       for (let i = 0; i < count; i++) {
         const speed = Math.random() * 4.5 + 1.2;
         const angle = Math.random() * Math.PI * 2;
@@ -281,7 +226,7 @@ export default function TankGame({ socket, onBackToHub }) {
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
           color,
-          size: Math.random() * 4.5 + 2,
+          size: Math.random() * 4 + 2,
           life: 1.0,
           decay: Math.random() * 0.035 + 0.02
         });
@@ -292,7 +237,6 @@ export default function TankGame({ socket, onBackToHub }) {
           y,
           isRing: true,
           radius: 4,
-          maxRadius: 40,
           color,
           life: 1.0,
           decay: 0.05
@@ -320,7 +264,7 @@ export default function TankGame({ socket, onBackToHub }) {
 
       setMatchTime(Math.floor((Date.now() - state.matchStart) / 1000));
 
-      // 1. Tanks Update
+      // Tanks
       state.tanks.forEach(tank => {
         const base = state.bases[tank.id];
 
@@ -341,7 +285,6 @@ export default function TankGame({ socket, onBackToHub }) {
 
         if (tank.cooldown > 0) tank.cooldown--;
 
-        // Human Control
         if (tank.isHuman && tank.id === currentSlot) {
           let moveX = 0;
           let moveY = 0;
@@ -353,9 +296,8 @@ export default function TankGame({ socket, onBackToHub }) {
 
           if (moveX !== 0 || moveY !== 0) {
             tank.angle = Math.atan2(moveY, moveX);
-            const currentSpeed = tank.speed * (tank.speedBoost ? 1.4 : 1);
-            const nextX = tank.x + Math.cos(tank.angle) * currentSpeed;
-            const nextY = tank.y + Math.sin(tank.angle) * currentSpeed;
+            const nextX = tank.x + Math.cos(tank.angle) * tank.speed;
+            const nextY = tank.y + Math.sin(tank.angle) * tank.speed;
 
             if (nextX > 25 && nextX < CANVAS_WIDTH - 25 && !isCollidingWithWalls(nextX, tank.y, TANK_SIZE)) {
               tank.x = nextX;
@@ -369,7 +311,6 @@ export default function TankGame({ socket, onBackToHub }) {
             }
           }
 
-          // Fire
           if ((keys[' '] || keys['space'] || keys['Space']) && tank.cooldown === 0) {
             const bullet = {
               ownerId: tank.id,
@@ -390,7 +331,6 @@ export default function TankGame({ socket, onBackToHub }) {
             }
           }
         } else if (currentMode === 'single' && !tank.isHuman) {
-          // Single player AI
           const target = state.tanks[0].alive ? state.tanks[0] : state.bases[0];
           const angleToTarget = Math.atan2(target.y - tank.y, target.x - tank.x);
           tank.angle = angleToTarget + (Math.sin(Date.now() * 0.003 + tank.id) * 0.25);
@@ -420,7 +360,7 @@ export default function TankGame({ socket, onBackToHub }) {
         }
       });
 
-      // Multiplayer State Sync (20 Ticks/sec)
+      // Multiplayer Sync (20 Ticks/sec)
       if (currentMode === 'multi' && socket) {
         syncTick++;
         if (syncTick % 3 === 0) {
@@ -434,15 +374,14 @@ export default function TankGame({ socket, onBackToHub }) {
                 y: myTank.y,
                 angle: myTank.angle,
                 hp: myTank.hp,
-                alive: myTank.alive,
-                shield: myTank.shield
+                alive: myTank.alive
               }
             });
           }
         }
       }
 
-      // 2. Bullets & Collisions
+      // Bullets
       for (let i = state.bullets.length - 1; i >= 0; i--) {
         const b = state.bullets[i];
         b.x += b.vx;
@@ -459,7 +398,7 @@ export default function TankGame({ socket, onBackToHub }) {
 
         let destroyed = false;
 
-        // Wall Damage
+        // Walls Hit
         for (let j = state.walls.length - 1; j >= 0; j--) {
           const w = state.walls[j];
           if (b.x > w.x && b.x < w.x + w.w && b.y > w.y && b.y < w.y + w.h) {
@@ -473,7 +412,7 @@ export default function TankGame({ socket, onBackToHub }) {
           }
         }
 
-        // Base Statue Hit
+        // Base Hit
         if (!destroyed) {
           for (const base of state.bases) {
             if (!base.active) continue;
@@ -508,19 +447,14 @@ export default function TankGame({ socket, onBackToHub }) {
             if (!tank.alive) continue;
             const dist = Math.hypot(b.x - tank.x, b.y - tank.y);
             if (dist < TANK_SIZE / 1.5 && b.ownerId !== tank.id) {
-              if (tank.shield) {
-                tank.shield = false;
-                spawnExplosion(tank.x, tank.y, '#00f0ff', 10, true);
-              } else {
-                tank.hp -= 35;
-                spawnExplosion(b.x, b.y, tank.color, 10);
-                if (tank.hp <= 0) {
-                  tank.hp = 0;
-                  tank.alive = false;
-                  tank.respawnTimer = 3.0;
-                  spawnExplosion(tank.x, tank.y, '#ff0055', 28, true);
-                  addFeed(`💀 ${tank.name} was eliminated.`);
-                }
+              tank.hp -= 35;
+              spawnExplosion(b.x, b.y, tank.color, 10);
+              if (tank.hp <= 0) {
+                tank.hp = 0;
+                tank.alive = false;
+                tank.respawnTimer = 3.0;
+                spawnExplosion(tank.x, tank.y, '#ff0055', 28, true);
+                addFeed(`💀 ${tank.name} was eliminated.`);
               }
               destroyed = true;
               break;
@@ -533,7 +467,7 @@ export default function TankGame({ socket, onBackToHub }) {
         }
       }
 
-      // 3. Particles
+      // Particles
       for (let i = state.particles.length - 1; i >= 0; i--) {
         const p = state.particles[i];
         if (p.isRing) {
@@ -547,7 +481,7 @@ export default function TankGame({ socket, onBackToHub }) {
         if (p.life <= 0) state.particles.splice(i, 1);
       }
 
-      // 4. Victory Check
+      // Victory Check
       const activeBases = state.bases.filter(b => b.active);
       if (activeBases.length <= 1) {
         setWinner(activeBases[0] ? activeBases[0].name : 'Draw');
@@ -561,7 +495,7 @@ export default function TankGame({ socket, onBackToHub }) {
 
       const state = stateRef.current;
 
-      // Draw Grid
+      // Grid
       ctx.strokeStyle = 'rgba(0, 240, 255, 0.04)';
       ctx.lineWidth = 1;
       for (let x = 0; x < CANVAS_WIDTH; x += 36) {
@@ -577,7 +511,7 @@ export default function TankGame({ socket, onBackToHub }) {
         ctx.stroke();
       }
 
-      // Draw Bases (Glowing Crystals)
+      // Bases
       state.bases.forEach(base => {
         ctx.save();
         ctx.translate(base.x, base.y);
@@ -613,7 +547,7 @@ export default function TankGame({ socket, onBackToHub }) {
         ctx.restore();
       });
 
-      // Draw Walls
+      // Walls
       state.walls.forEach(w => {
         if (w.isSteel) {
           ctx.fillStyle = '#1e293b';
@@ -629,7 +563,7 @@ export default function TankGame({ socket, onBackToHub }) {
         }
       });
 
-      // Draw Bullets
+      // Bullets
       state.bullets.forEach(b => {
         ctx.save();
         ctx.fillStyle = b.color;
@@ -641,7 +575,7 @@ export default function TankGame({ socket, onBackToHub }) {
         ctx.restore();
       });
 
-      // Draw Tanks
+      // Tanks
       state.tanks.forEach(tank => {
         if (!tank.alive) return;
 
@@ -669,7 +603,7 @@ export default function TankGame({ socket, onBackToHub }) {
         ctx.restore();
       });
 
-      // Draw Particles
+      // Particles
       state.particles.forEach(p => {
         ctx.save();
         ctx.globalAlpha = p.life;
@@ -700,11 +634,11 @@ export default function TankGame({ socket, onBackToHub }) {
   }, [gameState]);
 
   return (
-    <div style={{ width: '100%', minHeight: 'calc(100vh - 70px)', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#f8fafc' }}>
+    <div style={{ width: '100%', minHeight: 'calc(100vh - 70px)', padding: '12px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#f8fafc', boxSizing: 'border-box' }}>
       
-      {/* 4-Corner Top Glassmorphism HUD */}
+      {/* 4-Corner Top Glassmorphism HUD (Responsive Grid) */}
       {gameState === 'playing' && (
-        <div style={{ width: '100%', maxWidth: '920px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '14px' }}>
+        <div style={{ width: '100%', maxWidth: '920px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', marginBottom: '10px' }}>
           {stateRef.current.bases.map((base, idx) => {
             const tank = stateRef.current.tanks[idx];
             const isMe = idx === mySlot;
@@ -712,39 +646,26 @@ export default function TankGame({ socket, onBackToHub }) {
               <div 
                 key={idx} 
                 style={{ 
-                  background: 'rgba(15, 23, 42, 0.75)', 
-                  backdropFilter: 'blur(16px)',
+                  background: 'rgba(15, 23, 42, 0.8)', 
                   border: `1px solid ${isMe ? '#fff' : base.active ? base.color : '#334155'}`, 
-                  borderRadius: '16px', 
-                  padding: '10px 14px',
-                  boxShadow: base.active ? `0 0 20px ${base.glow}` : 'none',
-                  opacity: base.active ? 1 : 0.45,
-                  transform: isMe ? 'scale(1.02)' : 'scale(1)'
+                  borderRadius: '12px', 
+                  padding: '6px 10px',
+                  opacity: base.active ? 1 : 0.45
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: '900', color: base.color, letterSpacing: '1px' }}>
-                    {base.name} {isMe ? '(YOU)' : ''}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '900', color: base.color }}>
+                    {base.name.split(' ')[0]} {isMe ? '(YOU)' : ''}
                   </span>
-                  <span style={{ fontSize: '9px', fontWeight: '800', padding: '2px 6px', borderRadius: '6px', background: base.active ? `${base.color}20` : '#ef444420', color: base.active ? base.color : '#ef4444' }}>
-                    {base.active ? 'ONLINE' : 'DESTROYED'}
+                  <span style={{ fontSize: '8px', color: base.active ? base.color : '#ef4444' }}>
+                    {base.active ? `${base.statueHp}` : 'DEAD'}
                   </span>
                 </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#94a3b8', marginBottom: '2px' }}>
-                  <span>CORE HP</span>
-                  <strong style={{ color: base.color }}>{base.statueHp}</strong>
+                <div style={{ width: '100%', height: '4px', background: '#020617', borderRadius: '2px', overflow: 'hidden', marginBottom: '4px' }}>
+                  <div style={{ width: `${(base.statueHp / base.maxStatueHp) * 100}%`, height: '100%', background: base.color }} />
                 </div>
-                <div style={{ width: '100%', height: '6px', background: '#020617', borderRadius: '3px', overflow: 'hidden', marginBottom: '6px' }}>
-                  <div style={{ width: `${(base.statueHp / base.maxStatueHp) * 100}%`, height: '100%', background: `linear-gradient(90deg, ${base.color}, #fff)` }} />
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#94a3b8', marginBottom: '2px' }}>
-                  <span>TANK UNIT</span>
-                  <span>{tank && tank.alive ? `${tank.hp}%` : 'RESPAWNING'}</span>
-                </div>
-                <div style={{ width: '100%', height: '4px', background: '#020617', borderRadius: '2px', overflow: 'hidden' }}>
-                  <div style={{ width: `${tank && tank.alive ? (tank.hp / tank.maxHp) * 100 : 0}%`, height: '100%', background: '#f8fafc' }} />
+                <div style={{ width: '100%', height: '3px', background: '#020617', borderRadius: '2px', overflow: 'hidden' }}>
+                  <div style={{ width: `${tank && tank.alive ? (tank.hp / tank.maxHp) * 100 : 0}%`, height: '100%', background: '#fff' }} />
                 </div>
               </div>
             );
@@ -752,80 +673,64 @@ export default function TankGame({ socket, onBackToHub }) {
         </div>
       )}
 
-      {/* Main Canvas Box */}
-      <div style={{ position: 'relative', width: `${CANVAS_WIDTH}px`, height: `${CANVAS_HEIGHT}px`, borderRadius: '22px', overflow: 'hidden', border: '1px solid rgba(0, 240, 255, 0.25)', boxShadow: '0 25px 60px rgba(0,0,0,0.8)' }}>
-        <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} style={{ display: 'block' }} />
+      {/* Main Canvas Box with Fluid Aspect Ratio */}
+      <div style={{ position: 'relative', width: '100%', maxWidth: '920px', aspectRatio: '920 / 600', borderRadius: '18px', overflow: 'hidden', border: '1px solid rgba(0, 240, 255, 0.25)', boxShadow: '0 20px 50px rgba(0,0,0,0.8)' }}>
+        <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} style={{ width: '100%', height: '100%', display: 'block' }} />
 
         {gameState === 'playing' && (
-          <>
-            <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', background: 'rgba(7, 11, 20, 0.85)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)', padding: '6px 18px', borderRadius: '20px', fontSize: '11px', fontWeight: '800', display: 'flex', gap: '14px', alignItems: 'center' }}>
-              <span style={{ color: '#00f0ff' }}>⏱️ {Math.floor(matchTime / 60)}:{(matchTime % 60).toString().padStart(2, '0')}</span>
-              <span style={{ color: '#64748b' }}>|</span>
-              <span style={{ color: '#f8fafc' }}>
-                {gameMode === 'multi' ? `ONLINE 4P ARENA: ${roomId}` : 'SINGLE PLAYER vs 3 AI'}
-              </span>
-            </div>
-
-            <div style={{ position: 'absolute', bottom: 16, left: 16, display: 'flex', flexDirection: 'column', gap: '4px', pointerEvents: 'none' }}>
-              {killFeed.map((feed, i) => (
-                <div key={i} style={{ background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', borderLeft: '3px solid #00f0ff', padding: '4px 10px', borderRadius: '4px', fontSize: '11px', color: '#cbd5e1', fontFamily: 'monospace' }}>
-                  {feed}
-                </div>
-              ))}
-            </div>
-          </>
+          <div style={{ position: 'absolute', bottom: 10, left: 10, display: 'flex', flexDirection: 'column', gap: '3px', pointerEvents: 'none' }}>
+            {killFeed.map((feed, i) => (
+              <div key={i} style={{ background: 'rgba(15, 23, 42, 0.85)', padding: '3px 8px', borderRadius: '4px', fontSize: '9px', color: '#cbd5e1', fontFamily: 'monospace' }}>
+                {feed}
+              </div>
+            ))}
+          </div>
         )}
 
         {/* Lobby Overlay */}
         {gameState === 'lobby' && (
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(5, 7, 17, 0.88)', backdropFilter: 'blur(16px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ textAlign: 'center', maxWidth: '440px', padding: '24px' }}>
-              <div style={{ width: '60px', height: '60px', borderRadius: '18px', background: 'linear-gradient(135deg, #00f0ff, #0072ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', margin: '0 auto 16px', boxShadow: '0 0 30px rgba(0, 240, 255, 0.5)' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(5, 7, 17, 0.9)', backdropFilter: 'blur(12px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ textAlign: 'center', maxWidth: '400px' }}>
+              <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'linear-gradient(135deg, #00f0ff, #0072ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', margin: '0 auto 12px' }}>
                 🛡️
               </div>
-              <h1 style={{ fontSize: '26px', fontWeight: '900', color: '#f8fafc', marginBottom: '8px' }}>TANK ARENA: CYBER CORE</h1>
-              <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: '1.5', marginBottom: '20px' }}>
-                4-Corner Base Defense Arena. Play Solo against 3 AI Cores or Challenge up to 4 Players Online!
+              <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#f8fafc', marginBottom: '6px' }}>TANK ARENA: CYBER CORE</h2>
+              <p style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '16px' }}>
+                Defend your core while destroying enemy bases. Touch controls enabled on Mobile!
               </p>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleStartSinglePlayer}
-                  style={{ padding: '13px', borderRadius: '12px', border: '1px solid #00f0ff', background: 'rgba(0, 240, 255, 0.15)', color: '#00f0ff', fontSize: '14px', fontWeight: '800', cursor: 'pointer' }}
+                  style={{ padding: '12px', borderRadius: '12px', border: '1px solid #00f0ff', background: 'rgba(0, 240, 255, 0.15)', color: '#00f0ff', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}
                 >
                   🤖 Single Player vs 3 AI Tanks
                 </motion.button>
 
-                <div style={{ display: 'flex', alignItems: 'center', margin: '6px 0', color: '#64748b', fontSize: '11px' }}>
-                  <div style={{ flex: 1, height: '1px', background: '#334155' }}></div>
-                  <span style={{ padding: '0 10px' }}>OR 2 - 4 PLAYERS ONLINE ARENA</span>
-                  <div style={{ flex: 1, height: '1px', background: '#334155' }}></div>
-                </div>
-
-                <form onSubmit={handleJoinMultiplayerRoom} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <form onSubmit={handleJoinMultiplayerRoom} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <input
                     type="text"
-                    placeholder="Enter Custom Room Code (e.g. TANK_WAR)"
+                    placeholder="Enter Room ID (e.g. ARENA_77)"
                     value={roomId}
                     onChange={(e) => setRoomId(e.target.value)}
-                    style={{ padding: '11px 14px', borderRadius: '10px', border: '1px solid #334155', background: '#020617', color: '#fff', fontSize: '13px', outline: 'none' }}
+                    style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid #334155', background: '#020617', color: '#fff', fontSize: '12px', outline: 'none' }}
                     required
                   />
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
-                    style={{ padding: '13px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #00f0ff, #0072ff)', color: '#020617', fontSize: '14px', fontWeight: '900', cursor: 'pointer' }}
+                    style={{ padding: '12px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #00f0ff, #0072ff)', color: '#020617', fontSize: '13px', fontWeight: '900', cursor: 'pointer' }}
                   >
-                    🌐 Enter 4-Player Battle Arena
+                    🌐 Enter 4-Player Battle
                   </motion.button>
                 </form>
 
                 <button
                   onClick={onBackToHub}
-                  style={{ padding: '9px', borderRadius: '10px', border: '1px solid #334155', background: 'transparent', color: '#94a3b8', fontSize: '12px', cursor: 'pointer' }}
+                  style={{ padding: '8px', borderRadius: '10px', border: '1px solid #334155', background: 'transparent', color: '#94a3b8', fontSize: '11px', cursor: 'pointer' }}
                 >
                   ← Return to Game Hub
                 </button>
@@ -834,17 +739,17 @@ export default function TankGame({ socket, onBackToHub }) {
           </div>
         )}
 
-        {/* Game Over */}
+        {/* Game Over Screen */}
         {gameState === 'gameover' && (
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(5, 7, 17, 0.92)', backdropFilter: 'blur(16px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(5, 7, 17, 0.94)', backdropFilter: 'blur(12px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <motion.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '48px', marginBottom: '10px' }}>🏆</div>
-              <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#00f0ff', marginBottom: '6px' }}>{winner} VICTORY!</h2>
-              <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '24px' }}>All opposing Base Cores have been eradicated.</p>
+              <div style={{ fontSize: '42px', marginBottom: '8px' }}>🏆</div>
+              <h2 style={{ fontSize: '26px', fontWeight: '900', color: '#00f0ff', marginBottom: '4px' }}>{winner} VICTORY!</h2>
+              <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '18px' }}>All opposing bases destroyed.</p>
 
               <button
                 onClick={() => setGameState('lobby')}
-                style={{ padding: '12px 24px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #00f0ff, #0072ff)', color: '#020617', fontSize: '14px', fontWeight: '900', cursor: 'pointer' }}
+                style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #00f0ff, #0072ff)', color: '#020617', fontSize: '13px', fontWeight: '900', cursor: 'pointer' }}
               >
                 Back to Lobby
               </button>
@@ -852,6 +757,68 @@ export default function TankGame({ socket, onBackToHub }) {
           </div>
         )}
       </div>
+
+      {/* Mobile Touch Controls Overlay (Virtual Joystick & Action Buttons) */}
+      {gameState === 'playing' && (
+        <div style={{ width: '100%', maxWidth: '920px', marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 10px', userSelect: 'none', WebkitUserSelect: 'none' }}>
+          
+          {/* Virtual D-Pad */}
+          <div style={{ position: 'relative', width: '130px', height: '130px' }}>
+            {/* UP */}
+            <button
+              onTouchStart={() => handleTouchDir('up', true)}
+              onTouchEnd={() => handleTouchDir('up', false)}
+              onMouseDown={() => handleTouchDir('up', true)}
+              onMouseUp={() => handleTouchDir('up', false)}
+              style={{ position: 'absolute', top: 0, left: '42px', width: '46px', height: '46px', borderRadius: '12px', background: 'rgba(15, 23, 42, 0.85)', border: '1px solid #00f0ff', color: '#00f0ff', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            >
+              ▲
+            </button>
+            {/* LEFT */}
+            <button
+              onTouchStart={() => handleTouchDir('left', true)}
+              onTouchEnd={() => handleTouchDir('left', false)}
+              onMouseDown={() => handleTouchDir('left', true)}
+              onMouseUp={() => handleTouchDir('left', false)}
+              style={{ position: 'absolute', top: '42px', left: 0, width: '46px', height: '46px', borderRadius: '12px', background: 'rgba(15, 23, 42, 0.85)', border: '1px solid #00f0ff', color: '#00f0ff', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            >
+              ◀
+            </button>
+            {/* RIGHT */}
+            <button
+              onTouchStart={() => handleTouchDir('right', true)}
+              onTouchEnd={() => handleTouchDir('right', false)}
+              onMouseDown={() => handleTouchDir('right', true)}
+              onMouseUp={() => handleTouchDir('right', false)}
+              style={{ position: 'absolute', top: '42px', right: 0, width: '46px', height: '46px', borderRadius: '12px', background: 'rgba(15, 23, 42, 0.85)', border: '1px solid #00f0ff', color: '#00f0ff', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            >
+              ▶
+            </button>
+            {/* DOWN */}
+            <button
+              onTouchStart={() => handleTouchDir('down', true)}
+              onTouchEnd={() => handleTouchDir('down', false)}
+              onMouseDown={() => handleTouchDir('down', true)}
+              onMouseUp={() => handleTouchDir('down', false)}
+              style={{ position: 'absolute', bottom: 0, left: '42px', width: '46px', height: '46px', borderRadius: '12px', background: 'rgba(15, 23, 42, 0.85)', border: '1px solid #00f0ff', color: '#00f0ff', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            >
+              ▼
+            </button>
+          </div>
+
+          {/* Action Fire Button */}
+          <button
+            onTouchStart={() => handleTouchFire(true)}
+            onTouchEnd={() => handleTouchFire(false)}
+            onMouseDown={() => handleTouchFire(true)}
+            onMouseUp={() => handleTouchFire(false)}
+            style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'linear-gradient(135deg, #ff0055, #ff5500)', border: '2px solid #fff', color: '#fff', fontSize: '24px', fontWeight: '900', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 25px rgba(255, 0, 85, 0.6)', cursor: 'pointer' }}
+          >
+            🔥
+          </button>
+        </div>
+      )}
+
     </div>
   );
 }
