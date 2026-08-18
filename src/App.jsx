@@ -74,7 +74,7 @@ export default function App() {
     });
 
     socket.on('room_full', () => {
-      alert('Room is already full! Please try a different room name.');
+      alert('Room is already full! Please try another room code.');
     });
 
     return () => {
@@ -84,7 +84,7 @@ export default function App() {
     };
   }, []);
 
-  // AI Logic Execution
+  // AI Turn Execution
   useEffect(() => {
     if (gameMode === 'ai' && !inLobby && currentTurn === 'white' && !stats.winner) {
       const timer = setTimeout(() => {
@@ -123,7 +123,7 @@ export default function App() {
 
     if (furtherCaptures.length > 0) {
       const nextJump = furtherCaptures[0];
-      const logMsg = `AI chained jump to (${aiMove.toRow},${aiMove.toCol}) ⚔️`;
+      const logMsg = `AI jumped to (${aiMove.toRow},${aiMove.toCol}) ⚔️`;
       setBoardState(newBoard);
       setMoveLogs(prev => [logMsg, ...prev].slice(0, 12));
 
@@ -243,10 +243,10 @@ export default function App() {
   const isMyTurn = currentTurn === myColor;
 
   return (
-    <div style={{ width: '100vw', minHeight: '100vh', backgroundColor: '#050811', color: '#f8fafc', overflowX: 'hidden' }}>
+    <div style={{ width: '100vw', minHeight: '100vh', backgroundColor: '#070b14', color: '#f8fafc' }}>
       <Navbar onNavigate={setCurrentView} activeTab={currentView} />
 
-      {/* 1. Home Hub */}
+      {/* Home Hub View */}
       {currentView === 'home' && (
         <HomeHub onSelectGame={(gameId) => {
           if (gameId === 'daam') setCurrentView('daam');
@@ -254,15 +254,15 @@ export default function App() {
         }} />
       )}
 
-      {/* 2. Tank Arena 2D View */}
+      {/* Tank Game View */}
       {currentView === 'tank' && (
         <TankGame socket={socket} onBackToHub={() => setCurrentView('home')} />
       )}
 
-      {/* 3. 3D Daam Arena View */}
+      {/* 3D Daam View */}
       {currentView === 'daam' && (
         <>
-          {/* Hand Tracker Gesture Cursor */}
+          {/* Hand Tracker Cursor */}
           <div 
             style={{
               position: 'fixed',
@@ -273,7 +273,7 @@ export default function App() {
               borderRadius: '50%',
               backgroundColor: isPinching ? '#10b981' : '#38bdf8',
               border: '2px solid #ffffff',
-              boxShadow: isPinching ? '0 0 25px #10b981' : '0 0 20px rgba(56, 189, 248, 0.8)',
+              boxShadow: isPinching ? '0 0 25px #10b981' : '0 0 15px rgba(56, 189, 248, 0.8)',
               pointerEvents: 'none',
               zIndex: 9999,
               transition: 'width 0.08s, height 0.08s, background-color 0.08s'
@@ -281,101 +281,57 @@ export default function App() {
           />
 
           {inLobby ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 80px)', padding: '20px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 80px)', padding: '16px' }}>
               <motion.div 
-                initial={{ scale: 0.92, opacity: 0, y: 10 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
+                initial={{ scale: 0.92, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
                 style={{
-                  background: 'rgba(15, 23, 42, 0.75)',
-                  backdropFilter: 'blur(20px)',
-                  padding: '36px 28px',
-                  borderRadius: '28px',
+                  background: 'rgba(15, 23, 42, 0.85)',
+                  backdropFilter: 'blur(16px)',
+                  padding: '32px 24px',
+                  borderRadius: '24px',
                   border: '1px solid rgba(56, 189, 248, 0.25)',
                   width: '100%',
-                  maxWidth: '420px',
+                  maxWidth: '400px',
                   textAlign: 'center',
-                  boxShadow: '0 30px 60px rgba(0, 0, 0, 0.7)',
-                  position: 'relative'
+                  boxShadow: '0 25px 50px rgba(0,0,0,0.7)'
                 }}
               >
-                {/* Glow Orb */}
-                <div style={{ position: 'absolute', top: '-10%', left: '30%', right: '30%', height: '40px', background: 'radial-gradient(circle, rgba(56,189,248,0.4) 0%, transparent 70%)', pointerEvents: 'none' }} />
-
-                <div style={{ width: '56px', height: '56px', borderRadius: '18px', background: 'linear-gradient(135deg, #0284c7, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', margin: '0 auto 16px', boxShadow: '0 0 30px rgba(56, 189, 248, 0.5)' }}>
+                <div style={{ width: '52px', height: '52px', borderRadius: '16px', background: 'linear-gradient(135deg, #0284c7, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', margin: '0 auto 14px', boxShadow: '0 0 25px rgba(56, 189, 248, 0.4)' }}>
                   ♟️
                 </div>
-                <h2 style={{ fontSize: '26px', fontWeight: '900', color: '#f8fafc', letterSpacing: '-0.5px', marginBottom: '6px' }}>3D Daam Arena</h2>
-                <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: '1.5', marginBottom: '24px' }}>
-                  Select your combat protocol to challenge the Grandmaster AI or battle online.
-                </p>
+                <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#f8fafc', marginBottom: '6px' }}>3D Daam Arena</h2>
+                <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '22px' }}>Choose your mode to battle online or vs AI</p>
 
-                {/* Single Player Button */}
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleStartAiGame}
-                  style={{
-                    width: '100%',
-                    padding: '14px',
-                    borderRadius: '16px',
-                    border: '1px solid rgba(56, 189, 248, 0.5)',
-                    background: 'rgba(56, 189, 248, 0.12)',
-                    color: '#38bdf8',
-                    fontSize: '14px',
-                    fontWeight: '800',
-                    cursor: 'pointer',
-                    marginBottom: '18px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '10px',
-                    letterSpacing: '0.5px'
-                  }}
+                  style={{ width: '100%', padding: '13px', borderRadius: '14px', border: '1px solid #38bdf8', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', fontSize: '14px', fontWeight: '800', cursor: 'pointer', marginBottom: '16px' }}
                 >
-                  🤖 Single Player (vs Grandmaster AI)
+                  🤖 Single Player vs AI Bot
                 </motion.button>
 
-                <div style={{ display: 'flex', alignItems: 'center', margin: '16px 0', color: '#64748b', fontSize: '11px', fontWeight: '700', letterSpacing: '1px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', margin: '14px 0', color: '#64748b', fontSize: '11px', fontWeight: '700' }}>
                   <div style={{ flex: 1, height: '1px', background: '#334155' }} />
-                  <span style={{ padding: '0 12px' }}>OR ONLINE MULTIPLAYER</span>
+                  <span style={{ padding: '0 10px' }}>OR ONLINE MULTIPLAYER</span>
                   <div style={{ flex: 1, height: '1px', background: '#334155' }} />
                 </div>
 
-                {/* Multiplayer Form */}
                 <form onSubmit={handleJoinOnlineRoom} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <input
                     type="text"
-                    placeholder="Enter Custom Room ID (e.g. ARENA_99)"
+                    placeholder="Enter Room Code (e.g. SL_PRO)"
                     value={roomId}
                     onChange={(e) => setRoomId(e.target.value)}
-                    style={{
-                      padding: '13px 16px',
-                      borderRadius: '14px',
-                      border: '1px solid #334155',
-                      background: 'rgba(2, 6, 23, 0.8)',
-                      color: '#ffffff',
-                      fontSize: '14px',
-                      outline: 'none',
-                      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)'
-                    }}
+                    style={{ padding: '12px 14px', borderRadius: '12px', border: '1px solid #334155', background: '#020617', color: '#fff', fontSize: '14px', outline: 'none' }}
                     required
                   />
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
-                    style={{
-                      padding: '13px',
-                      borderRadius: '14px',
-                      border: 'none',
-                      background: 'linear-gradient(135deg, #0284c7, #2563eb)',
-                      color: '#ffffff',
-                      fontSize: '14px',
-                      fontWeight: '800',
-                      cursor: 'pointer',
-                      boxShadow: '0 8px 25px rgba(2, 132, 199, 0.45)',
-                      letterSpacing: '0.5px'
-                    }}
+                    style={{ padding: '12px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #0284c7, #2563eb)', color: '#fff', fontSize: '14px', fontWeight: '800', cursor: 'pointer', boxShadow: '0 8px 20px rgba(2, 132, 199, 0.4)' }}
                   >
                     🌐 Enter Online Match
                   </motion.button>
@@ -383,171 +339,154 @@ export default function App() {
 
                 <button
                   onClick={() => setCurrentView('home')}
-                  style={{ marginTop: '18px', background: 'transparent', border: 'none', color: '#64748b', fontSize: '12px', fontWeight: '600', cursor: 'pointer', transition: 'color 0.2s' }}
+                  style={{ marginTop: '16px', background: 'transparent', border: 'none', color: '#64748b', fontSize: '12px', cursor: 'pointer' }}
                 >
-                  ← Return to Game Hub
+                  ← Back to Game Hub
                 </button>
               </motion.div>
             </div>
           ) : (
-            <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '16px 20px' }}>
+            <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '16px' }}>
               
-              {/* Premium Esports Top HUD */}
+              {/* Sleek Top HUD Bar */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gridTemplateColumns: '1fr auto 1fr',
                 gap: '12px',
                 alignItems: 'center',
-                background: 'rgba(15, 23, 42, 0.65)',
-                backdropFilter: 'blur(20px)',
+                background: 'rgba(15, 23, 42, 0.75)',
+                backdropFilter: 'blur(16px)',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '20px',
-                padding: '12px 18px',
-                marginBottom: '16px',
-                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.4)'
+                borderRadius: '16px',
+                padding: '10px 16px',
+                marginBottom: '14px'
               }}>
-                {/* Red Player Card */}
+                {/* Red Player */}
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '12px',
-                  padding: '8px 14px',
-                  borderRadius: '14px',
-                  background: currentTurn === 'red' ? 'rgba(239, 68, 68, 0.18)' : 'rgba(2, 6, 23, 0.5)',
-                  border: `1px solid ${currentTurn === 'red' ? '#ef4444' : 'transparent'}`,
-                  boxShadow: currentTurn === 'red' ? '0 0 15px rgba(239, 68, 68, 0.3)' : 'none',
-                  transition: 'all 0.3s ease'
+                  gap: '10px',
+                  padding: '6px 12px',
+                  borderRadius: '12px',
+                  background: currentTurn === 'red' ? 'rgba(239, 68, 68, 0.18)' : 'transparent',
+                  border: `1px solid ${currentTurn === 'red' ? '#ef4444' : 'transparent'}`
                 }}>
-                  <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: 'linear-gradient(135deg, #ef4444, #991b1b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', boxShadow: '0 0 12px rgba(239,68,68,0.5)' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>
                     🔴
                   </div>
                   <div>
-                    <div style={{ fontSize: '13px', fontWeight: '900', color: '#f8fafc', letterSpacing: '0.5px' }}>
-                      RED {myColor === 'red' ? '(YOU)' : ''}
+                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>
+                      RED {myColor === 'red' ? '(You)' : ''}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                      Pieces Remaining: <strong style={{ color: '#ef4444', fontSize: '12px' }}>{stats.redCount}</strong>
+                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>
+                      Pieces: <strong style={{ color: '#ef4444' }}>{stats.redCount}</strong>
                     </div>
                   </div>
                 </div>
 
-                {/* Match Status Center Pill */}
+                {/* Center Turn Pill */}
                 <div style={{ textAlign: 'center' }}>
                   <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 18px',
-                    borderRadius: '24px',
+                    display: 'inline-block',
+                    padding: '4px 14px',
+                    borderRadius: '20px',
                     fontSize: '11px',
-                    fontWeight: '900',
-                    letterSpacing: '1px',
+                    fontWeight: '800',
                     background: isMultiJumping ? 'rgba(239, 68, 68, 0.25)' : isMyTurn ? 'rgba(16, 185, 129, 0.2)' : 'rgba(234, 179, 8, 0.15)',
                     color: isMultiJumping ? '#f87171' : isMyTurn ? '#10b981' : '#eab308',
-                    border: `1px solid ${isMultiJumping ? '#ef4444' : isMyTurn ? '#10b981' : '#eab308'}`,
-                    boxShadow: isMyTurn ? '0 0 15px rgba(16, 185, 129, 0.3)' : 'none'
+                    border: `1px solid ${isMultiJumping ? '#ef4444' : isMyTurn ? '#10b981' : '#eab308'}`
                   }}>
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isMultiJumping ? '#ef4444' : isMyTurn ? '#10b981' : '#eab308' }} />
-                    {isMultiJumping ? '⚡ CHAIN CAPTURE AVAILABLE' : isMyTurn ? '⚡ YOUR TURN TO MOVE' : (gameMode === 'ai' ? '🤖 AI THINKING...' : '⏳ OPPONENT TURN')}
+                    {isMultiJumping ? '⚡ CHAIN JUMP!' : isMyTurn ? '⚡ YOUR TURN' : (gameMode === 'ai' ? '🤖 AI THINKING...' : '⏳ OPPONENT')}
                   </span>
-                  <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', fontWeight: '600' }}>
-                    {gameMode === 'ai' ? 'SINGLE PLAYER ARENA' : `ROOM: ${roomId}`}
-                  </div>
                 </div>
 
-                {/* White Player Card */}
+                {/* White Player */}
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'flex-end',
-                  gap: '12px',
-                  padding: '8px 14px',
-                  borderRadius: '14px',
-                  background: currentTurn === 'white' ? 'rgba(255, 255, 255, 0.18)' : 'rgba(2, 6, 23, 0.5)',
-                  border: `1px solid ${currentTurn === 'white' ? '#f8fafc' : 'transparent'}`,
-                  boxShadow: currentTurn === 'white' ? '0 0 15px rgba(255, 255, 255, 0.3)' : 'none',
-                  transition: 'all 0.3s ease'
+                  gap: '10px',
+                  padding: '6px 12px',
+                  borderRadius: '12px',
+                  background: currentTurn === 'white' ? 'rgba(255, 255, 255, 0.18)' : 'transparent',
+                  border: `1px solid ${currentTurn === 'white' ? '#f8fafc' : 'transparent'}`
                 }}>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '13px', fontWeight: '900', color: '#f8fafc', letterSpacing: '0.5px' }}>
-                      WHITE {gameMode === 'ai' ? '(AI BOT)' : (myColor === 'white' ? '(YOU)' : '')}
+                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>
+                      WHITE {gameMode === 'ai' ? '(AI Bot)' : (myColor === 'white' ? '(You)' : '')}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                      Pieces Remaining: <strong style={{ color: '#f8fafc', fontSize: '12px' }}>{stats.whiteCount}</strong>
+                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>
+                      Pieces: <strong style={{ color: '#f8fafc' }}>{stats.whiteCount}</strong>
                     </div>
                   </div>
-                  <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: 'linear-gradient(135deg, #ffffff, #cbd5e1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', boxShadow: '0 0 12px rgba(255,255,255,0.4)' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>
                     {gameMode === 'ai' ? '🤖' : '⚪'}
                   </div>
                 </div>
               </div>
 
-              {/* Victory Screen Modal */}
+              {/* Victory Banner */}
               <AnimatePresence>
                 {stats.winner && (
                   <motion.div 
-                    initial={{ y: -20, opacity: 0 }}
+                    initial={{ y: -10, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     style={{
-                      marginBottom: '16px',
-                      padding: '16px',
-                      background: stats.winner.toLowerCase() === myColor ? 'linear-gradient(135deg, #059669, #10b981)' : 'linear-gradient(135deg, #b91c1c, #ef4444)',
+                      marginBottom: '14px',
+                      padding: '12px',
+                      background: stats.winner.toLowerCase() === myColor ? 'linear-gradient(90deg, #059669, #10b981)' : 'linear-gradient(90deg, #b91c1c, #ef4444)',
                       color: '#ffffff',
                       textAlign: 'center',
-                      borderRadius: '16px',
-                      fontWeight: '900',
-                      fontSize: '18px',
-                      boxShadow: '0 15px 35px rgba(0,0,0,0.6)',
-                      letterSpacing: '0.5px'
+                      borderRadius: '14px',
+                      fontWeight: '800',
+                      fontSize: '15px'
                     }}
                   >
-                    🏆 VICTORY! {stats.winner === (myColor ? myColor.charAt(0).toUpperCase() + myColor.slice(1) : '') ? 'YOU CONQUERED THE ARENA!' : (gameMode === 'ai' ? 'AI BOT WON THE MATCH!' : 'OPPONENT WON THE MATCH!')}
+                    🏆 VICTORY! {stats.winner === (myColor ? myColor.charAt(0).toUpperCase() + myColor.slice(1) : '') ? 'YOU WON THE MATCH!' : (gameMode === 'ai' ? 'AI BOT WON!' : 'OPPONENT WON!')}
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/* Main Board & Hand Tracker Area */}
-              <div className="arena-grid">
-                <div style={{ borderRadius: '24px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.2)', boxShadow: '0 25px 60px rgba(0, 0, 0, 0.75)' }}>
+              {/* Main Game Layout */}
+              <div className="daam-layout">
+                {/* 3D Board Canvas */}
+                <div style={{ height: '620px', borderRadius: '20px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.2)', boxShadow: '0 20px 50px rgba(0,0,0,0.6)' }}>
                   <Board3D 
                     boardState={boardState}
                     selectedPiece={selectedPiece}
                     validMoves={validMoves}
                     onPieceClick={handlePieceClick}
                     onTileClick={handleTileClick}
-                    cursorPos={cursorPos}
-                    isPinching={isPinching}
                   />
                 </div>
 
-                {/* Right Combat Panel */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* Right Panel: HandTracker + Logs */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <HandTracker 
                     onCursorMove={setCursorPos}
                     onPinchStateChange={setIsPinching}
                   />
 
-                  {/* Glassmorphism Live Combat Log */}
+                  {/* Combat Logs */}
                   <div style={{
                     background: 'rgba(15, 23, 42, 0.75)',
                     backdropFilter: 'blur(16px)',
-                    borderRadius: '20px',
+                    borderRadius: '16px',
                     border: '1px solid rgba(255, 255, 255, 0.08)',
-                    padding: '16px',
+                    padding: '14px',
                     height: '210px',
                     display: 'flex',
-                    flexDirection: 'column',
-                    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)'
+                    flexDirection: 'column'
                   }}>
-                    <div style={{ fontSize: '11px', fontWeight: '900', color: '#38bdf8', letterSpacing: '1px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span>⚡</span> ARENA COMBAT LOG
+                    <div style={{ fontSize: '11px', fontWeight: '800', color: '#38bdf8', marginBottom: '8px' }}>
+                      ⚡ LIVE COMBAT LOG
                     </div>
-                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', color: '#94a3b8', fontFamily: 'monospace' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '11px', color: '#94a3b8', fontFamily: 'monospace' }}>
                       {moveLogs.length === 0 ? (
-                        <div style={{ color: '#475569', fontStyle: 'italic' }}>Awaiting initial combat deployment...</div>
+                        <div style={{ color: '#475569', fontStyle: 'italic' }}>Waiting for moves...</div>
                       ) : (
                         moveLogs.map((log, idx) => (
-                          <div key={idx} style={{ padding: '5px 8px', background: 'rgba(2, 6, 23, 0.6)', borderRadius: '6px', borderLeft: '3px solid #38bdf8' }}>
+                          <div key={idx} style={{ padding: '4px 8px', background: 'rgba(2, 6, 23, 0.6)', borderRadius: '6px', borderLeft: '3px solid #38bdf8' }}>
                             {log}
                           </div>
                         ))

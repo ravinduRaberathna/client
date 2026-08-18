@@ -1,45 +1,37 @@
 import React, { useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Float, Center } from '@react-three/drei';
-import * as THREE from 'three';
+import { OrbitControls, Center } from '@react-three/drei';
 
-// 3D Piece Component
 function Piece({ position, color, isKing, isSelected, onClick }) {
-  const meshRef = useRef();
-
   return (
     <mesh
-      ref={meshRef}
-      position={[position[0], isKing ? 0.35 : 0.22, position[2]]}
+      position={[position[0], isKing ? 0.32 : 0.2, position[2]]}
       onClick={(e) => {
         e.stopPropagation();
         onClick();
       }}
     >
-      <cylinderGeometry args={[0.38, 0.42, isKing ? 0.45 : 0.28, 32]} />
+      <cylinderGeometry args={[0.38, 0.42, isKing ? 0.42 : 0.24, 32]} />
       <meshStandardMaterial
         color={color === 'red' ? '#ef4444' : '#f8fafc'}
-        metalness={0.6}
-        roughness={0.25}
-        emissive={isSelected ? (color === 'red' ? '#ff0055' : '#00f0ff') : (isKing ? (color === 'red' ? '#7f1d1d' : '#94a3b8') : '#000000')}
-        emissiveIntensity={isSelected ? 0.8 : (isKing ? 0.4 : 0)}
+        metalness={0.5}
+        roughness={0.2}
+        emissive={isSelected ? (color === 'red' ? '#ff0055' : '#00f0ff') : (isKing ? (color === 'red' ? '#991b1b' : '#94a3b8') : '#000000')}
+        emissiveIntensity={isSelected ? 0.9 : (isKing ? 0.35 : 0)}
       />
-      {/* King Crown Ring Top */}
       {isKing && (
-        <mesh position={[0, 0.25, 0]}>
-          <torusGeometry args={[0.22, 0.06, 16, 32]} />
-          <meshStandardMaterial color="#fbbf24" metalness={0.9} roughness={0.1} emissive="#f59e0b" emissiveIntensity={0.5} />
+        <mesh position={[0, 0.24, 0]}>
+          <torusGeometry args={[0.22, 0.05, 16, 32]} />
+          <meshStandardMaterial color="#fbbf24" metalness={0.9} roughness={0.1} emissive="#f59e0b" emissiveIntensity={0.6} />
         </mesh>
       )}
     </mesh>
   );
 }
 
-// 3D Tile Component
 function Tile({ x, z, isDark, isValidMove, isSelected, onPieceClick, onTileClick, piece }) {
   return (
     <group position={[x - 3.5, 0, z - 3.5]}>
-      {/* Board Square Tile */}
       <mesh
         position={[0, 0, 0]}
         onClick={(e) => {
@@ -51,17 +43,16 @@ function Tile({ x, z, isDark, isValidMove, isSelected, onPieceClick, onTileClick
           }
         }}
       >
-        <boxGeometry args={[0.96, 0.15, 0.96]} />
+        <boxGeometry args={[0.96, 0.14, 0.96]} />
         <meshStandardMaterial
-          color={isValidMove ? '#10b981' : isSelected ? '#38bdf8' : isDark ? '#0f172a' : '#334155'}
+          color={isValidMove ? '#10b981' : isSelected ? '#38bdf8' : isDark ? '#0f172a' : '#1e293b'}
           roughness={0.3}
-          metalness={0.4}
+          metalness={0.3}
           emissive={isValidMove ? '#059669' : isSelected ? '#0284c7' : '#000000'}
-          emissiveIntensity={isValidMove ? 0.7 : isSelected ? 0.6 : 0}
+          emissiveIntensity={isValidMove ? 0.75 : isSelected ? 0.6 : 0}
         />
       </mesh>
 
-      {/* Piece Render */}
       {piece && (
         <Piece
           position={[0, 0, 0]}
@@ -83,50 +74,39 @@ export default function Board3D({
   onTileClick
 }) {
   return (
-    <div style={{ width: '100%', height: '680px', position: 'relative', background: 'radial-gradient(circle at center, #0a0f1d 0%, #03060f 100%)' }}>
+    <div style={{ width: '100%', height: '100%', minHeight: '520px', position: 'relative', background: 'radial-gradient(circle at center, #0f172a 0%, #050811 100%)', borderRadius: '20px', overflow: 'hidden' }}>
       <Canvas
-        camera={{ position: [0, 8.2, 6.8], fov: 42 }}
+        camera={{ position: [0, 8.5, 5.8], fov: 45 }}
         shadows
         style={{ width: '100%', height: '100%' }}
       >
-        {/* Lights */}
-        <ambientLight intensity={0.8} />
-        <directionalLight position={[6, 12, 6]} intensity={1.5} castShadow />
-        <pointLight position={[-6, 8, -6]} intensity={0.9} color="#38bdf8" />
-        <pointLight position={[6, 8, 6]} intensity={0.9} color="#ef4444" />
+        <ambientLight intensity={0.85} />
+        <directionalLight position={[5, 12, 5]} intensity={1.6} castShadow />
+        <pointLight position={[-6, 6, -6]} intensity={0.8} color="#38bdf8" />
+        <pointLight position={[6, 6, 6]} intensity={0.8} color="#ef4444" />
 
-        {/* Orbit Controls (Drag to rotate, Scroll to zoom) */}
         <OrbitControls
           enablePan={false}
           minPolarAngle={Math.PI / 6}
           maxPolarAngle={Math.PI / 2.3}
-          minDistance={6}
-          maxDistance={14}
+          minDistance={5}
+          maxDistance={12}
         />
 
         <Center>
-          {/* Main Board Base Plate */}
-          <mesh position={[0, -0.15, 0]}>
-            <boxGeometry args={[8.4, 0.25, 8.4]} />
-            <meshStandardMaterial
-              color="#020617"
-              metalness={0.8}
-              roughness={0.2}
-              envMapIntensity={1}
-            />
+          {/* Base Rim Board */}
+          <mesh position={[0, -0.12, 0]}>
+            <boxGeometry args={[8.4, 0.2, 8.4]} />
+            <meshStandardMaterial color="#090d16" metalness={0.8} roughness={0.2} />
           </mesh>
 
-          {/* Neon Border Rim */}
-          <mesh position={[0, -0.05, 0]}>
-            <boxGeometry args={[8.55, 0.08, 8.55]} />
-            <meshStandardMaterial
-              color="#38bdf8"
-              emissive="#0284c7"
-              emissiveIntensity={0.6}
-            />
+          {/* Neon Border Line */}
+          <mesh position={[0, -0.04, 0]}>
+            <boxGeometry args={[8.5, 0.05, 8.5]} />
+            <meshStandardMaterial color="#38bdf8" emissive="#0284c7" emissiveIntensity={0.5} />
           </mesh>
 
-          {/* 8x8 Board Matrix */}
+          {/* Tiles & Pieces */}
           {boardState.map((row, rIdx) =>
             row.map((piece, cIdx) => {
               const isDark = (rIdx + cIdx) % 2 === 1;
@@ -151,9 +131,8 @@ export default function Board3D({
         </Center>
       </Canvas>
 
-      {/* Interactive Helper Hint */}
-      <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)', border: '1px solid rgba(56, 189, 248, 0.2)', padding: '5px 14px', borderRadius: '20px', fontSize: '11px', color: '#94a3b8', pointerEvents: 'none', letterSpacing: '0.5px' }}>
-        🖱️ <strong>Left Click + Drag:</strong> Rotate 3D View | <strong>Scroll:</strong> Zoom
+      <div style={{ position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)', background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)', border: '1px solid rgba(56, 189, 248, 0.2)', padding: '4px 12px', borderRadius: '20px', fontSize: '10px', color: '#94a3b8', pointerEvents: 'none', whiteSpace: 'nowrap' }}>
+        🖱️ Drag to Rotate • Scroll to Zoom
       </div>
     </div>
   );

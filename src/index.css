@@ -1,8 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap');
 
-/* ==========================================================================
-   Base & Reset Styles
-   ========================================================================== */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -13,91 +10,39 @@
 html, body {
   width: 100%;
   min-height: 100vh;
-  background-color: #050811;
+  background-color: #070b14;
   color: #f8fafc;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-code, pre, .font-mono {
-  font-family: 'JetBrains Mono', monospace;
-}
-
-/* ==========================================================================
-   Custom Scrollbar
-   ========================================================================== */
+/* Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
-
 ::-webkit-scrollbar-track {
-  background: rgba(2, 6, 23, 0.7);
+  background: rgba(15, 23, 42, 0.6);
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 9999px;
-  border: 1px solid rgba(56, 189, 248, 0.1);
-}
-
-::-webkit-scrollbar-thumb:hover {
   background: #334155;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #0284c7;
 }
 
-/* ==========================================================================
-   Arena & Gameplay Layouts
-   ========================================================================== */
-.arena-grid {
+/* Responsive Gameplay Layout */
+.daam-layout {
   display: grid;
-  grid-template-columns: 1fr 310px;
-  gap: 18px;
+  grid-template-columns: 1fr 320px;
+  gap: 16px;
+  width: 100%;
   align-items: stretch;
-  width: 100%;
 }
 
-.hud-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  width: 100%;
-  margin-bottom: 16px;
-}
-
-/* ==========================================================================
-   Form Elements & Interactive States
-   ========================================================================== */
-input, button, select, textarea {
-  font-family: inherit;
-}
-
-input:focus, button:focus {
-  outline: none;
-}
-
-input::placeholder {
-  color: #475569;
-}
-
-button {
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-/* ==========================================================================
-   Responsive Breakpoints
-   ========================================================================== */
 @media (max-width: 1024px) {
-  .arena-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 640px) {
-  .hud-grid {
+  .daam-layout {
     grid-template-columns: 1fr;
   }
 }
