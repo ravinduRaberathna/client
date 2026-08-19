@@ -81,3 +81,14 @@ html, body {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Navbar Breakpoint Fix for Tablets and Mobiles */
+@media (max-width: 850px) {
+  .desktop-navbar {
+    display: none !important;
+  }
+  .mobile-hamburger-btn {
+    display: flex !important;
+  }
+}

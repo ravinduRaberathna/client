@@ -5,9 +5,9 @@ export default function Navbar({ onNavigate, activeTab }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { id: 'home', label: 'Hub', icon: '🎮', color: '#38bdf8' },
-    { id: 'daam', label: '3D Daam', icon: '♟️', color: '#38bdf8' },
-    { id: 'tank', label: 'Tank 4P', icon: '🛡️', color: '#00f0ff' }
+    { id: 'home', label: 'Hub', icon: '🎮', color: '#38bdf8', desc: 'Game Lobby & Selection' },
+    { id: 'daam', label: '3D Daam', icon: '♟️', color: '#38bdf8', desc: 'AI Bot & Multiplayer 3D' },
+    { id: 'tank', label: 'Tank 4P', icon: '🛡️', color: '#00f0ff', desc: '4-Player Base Defense' }
   ];
 
   const handleItemClick = (id) => {
@@ -19,7 +19,7 @@ export default function Navbar({ onNavigate, activeTab }) {
     <header style={{
       width: '100%',
       height: '60px',
-      background: 'rgba(7, 11, 20, 0.85)',
+      background: 'rgba(7, 11, 20, 0.88)',
       backdropFilter: 'blur(16px)',
       borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
       position: 'sticky',
@@ -30,13 +30,13 @@ export default function Navbar({ onNavigate, activeTab }) {
         maxWidth: '1240px',
         height: '100%',
         margin: '0 auto',
-        padding: '0 16px',
+        padding: '0 18px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between'
       }}>
         
-        {/* Brand Text Only (Logo Icon Removed) */}
+        {/* Brand Text */}
         <div 
           onClick={() => handleItemClick('home')}
           style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
@@ -62,8 +62,8 @@ export default function Navbar({ onNavigate, activeTab }) {
           </span>
         </div>
 
-        {/* Desktop Navigation Links */}
-        <nav className="desktop-nav" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+        {/* Desktop / Laptop Horizontal Navigation (>= 850px) */}
+        <nav className="desktop-navbar" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
             return (
@@ -71,7 +71,7 @@ export default function Navbar({ onNavigate, activeTab }) {
                 key={item.id}
                 onClick={() => handleItemClick(item.id)}
                 style={{
-                  padding: '6px 14px',
+                  padding: '7px 16px',
                   borderRadius: '10px',
                   border: isActive ? `1px solid ${item.color}` : '1px solid transparent',
                   background: isActive ? `${item.color}15` : 'transparent',
@@ -93,92 +93,122 @@ export default function Navbar({ onNavigate, activeTab }) {
           })}
         </nav>
 
-        {/* Mobile Hamburger Menu Button */}
+        {/* Mobile / Tablet Hamburger Toggle Button (< 850px) */}
         <button
-          className="mobile-hamburger"
+          className="mobile-hamburger-btn"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label="Toggle Menu"
           style={{
-            background: 'rgba(15, 23, 42, 0.7)',
+            background: 'rgba(15, 23, 42, 0.8)',
             border: '1px solid rgba(56, 189, 248, 0.3)',
             borderRadius: '10px',
-            width: '36px',
-            height: '36px',
+            width: '38px',
+            height: '38px',
             display: 'none',
             flexDirection: 'column',
             justifyContent: 'center',
             alignItems: 'center',
-            gap: '4px',
+            gap: '4.5px',
             cursor: 'pointer',
-            padding: '8px'
+            padding: '8px',
+            boxShadow: mobileMenuOpen ? '0 0 15px rgba(56, 189, 248, 0.4)' : 'none',
+            transition: 'border 0.2s'
           }}
         >
           <motion.span
-            animate={mobileMenuOpen ? { rotate: 45, y: 6 } : { rotate: 0, y: 0 }}
-            style={{ width: '18px', height: '2px', background: '#38bdf8', borderRadius: '2px' }}
+            animate={mobileMenuOpen ? { rotate: 45, y: 6.5 } : { rotate: 0, y: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{ width: '20px', height: '2px', background: '#38bdf8', borderRadius: '2px' }}
           />
           <motion.span
-            animate={mobileMenuOpen ? { opacity: 0 } : { opacity: 1 }}
-            style={{ width: '18px', height: '2px', background: '#38bdf8', borderRadius: '2px' }}
+            animate={mobileMenuOpen ? { opacity: 0, x: -10 } : { opacity: 1, x: 0 }}
+            transition={{ duration: 0.15 }}
+            style={{ width: '20px', height: '2px', background: '#38bdf8', borderRadius: '2px' }}
           />
           <motion.span
-            animate={mobileMenuOpen ? { rotate: -45, y: -6 } : { rotate: 0, y: 0 }}
-            style={{ width: '18px', height: '2px', background: '#38bdf8', borderRadius: '2px' }}
+            animate={mobileMenuOpen ? { rotate: -45, y: -6.5 } : { rotate: 0, y: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{ width: '20px', height: '2px', background: '#38bdf8', borderRadius: '2px' }}
           />
         </button>
 
       </div>
 
-      {/* Mobile Animated Dropdown Drawer */}
+      {/* Animated Dropdown Drawer for Mobile & Tablets */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0, height: 0, y: -10 }}
+            animate={{ opacity: 1, height: 'auto', y: 0 }}
+            exit={{ opacity: 0, height: 0, y: -10 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
             style={{
               position: 'absolute',
               top: '60px',
               left: 0,
               right: 0,
-              background: 'rgba(7, 11, 20, 0.95)',
-              backdropFilter: 'blur(20px)',
-              borderBottom: '1px solid rgba(56, 189, 248, 0.2)',
-              padding: '12px 16px',
+              background: 'rgba(7, 11, 20, 0.96)',
+              backdropFilter: 'blur(24px)',
+              borderBottom: '1px solid rgba(56, 189, 248, 0.25)',
+              padding: '16px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '8px',
-              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.8)',
+              gap: '10px',
+              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.9)',
+              overflow: 'hidden',
               zIndex: 999
             }}
           >
             {navItems.map((item) => {
               const isActive = activeTab === item.id;
               return (
-                <button
+                <motion.button
                   key={item.id}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => handleItemClick(item.id)}
                   style={{
                     width: '100%',
-                    padding: '12px 14px',
-                    borderRadius: '12px',
-                    border: isActive ? `1px solid ${item.color}` : '1px solid rgba(255, 255, 255, 0.05)',
-                    background: isActive ? `${item.color}20` : 'rgba(15, 23, 42, 0.6)',
+                    padding: '12px 16px',
+                    borderRadius: '14px',
+                    border: isActive ? `1px solid ${item.color}` : '1px solid rgba(255, 255, 255, 0.06)',
+                    background: isActive ? `${item.color}20` : 'rgba(15, 23, 42, 0.65)',
                     color: isActive ? item.color : '#f8fafc',
-                    fontSize: '13px',
-                    fontWeight: '800',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    boxShadow: isActive ? `0 0 15px ${item.color}25` : 'none'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
-                    <span>{item.label}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '10px',
+                      background: `${item.color}15`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '18px'
+                    }}>
+                      {item.icon}
+                    </div>
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '800', color: isActive ? item.color : '#f8fafc' }}>
+                        {item.label}
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#64748b' }}>
+                        {item.desc}
+                      </div>
+                    </div>
                   </div>
-                  {isActive && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: item.color, boxShadow: `0 0 8px ${item.color}` }} />}
-                </button>
+
+                  {isActive ? (
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.color, boxShadow: `0 0 10px ${item.color}` }} />
+                  ) : (
+                    <span style={{ fontSize: '14px', color: '#475569' }}>→</span>
+                  )}
+                </motion.button>
               );
             })}
           </motion.div>
