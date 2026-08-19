@@ -450,10 +450,25 @@ export default function App() {
                 </div>
 
                 <div className="daam-side-panel">
-                  <HandTracker 
-                    onCursorMove={setCursorPos}
-                    onPinchStateChange={setIsPinching}
-                  />
+                 {/* Right Side Panel ඇතුළේ HandTracker කොටස */}
+<HandTracker 
+  onCursorMove={setCursorPos}
+  onPinchStateChange={setIsPinching}
+  onTriggerClick={(x, y) => {
+    // Canvas එක උඩට හරියටම Click Event එක යැවීම
+    const targetElem = document.elementFromPoint(x, y);
+    if (targetElem) {
+      const clickEvent = new MouseEvent('click', {
+        clientX: x,
+        clientY: y,
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      targetElem.dispatchEvent(clickEvent);
+    }
+  }}
+/>
 
                   <div style={{
                     background: 'rgba(15, 23, 42, 0.75)',
