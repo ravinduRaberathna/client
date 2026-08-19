@@ -10,7 +10,12 @@ import { calculateValidMoves, calculateCapturesOnly, checkKingPromotion, getGame
 import { getBestAiMove } from './utils/aiLogic';
 import { sounds } from './utils/audio';
 
-const socket = io('https://server-production-836b.up.railway.app', {
+const BACKEND_URL = 
+  import.meta.env?.VITE_BACKEND_URL || 
+  process.env?.REACT_APP_BACKEND_URL || 
+  'https://server-production-836b.up.railway.app';
+
+const socket = io(BACKEND_URL, {
   transports: ['websocket', 'polling'],
   autoConnect: true
 });
