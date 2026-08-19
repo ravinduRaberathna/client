@@ -1,97 +1,103 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 
 export default function Navbar({ onNavigate, activeTab }) {
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
   return (
-    <motion.nav
-      initial={{ y: -60, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6 }}
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: isScrolled ? '10px 20px' : '16px 20px',
-        backgroundColor: isScrolled ? 'rgba(11, 15, 25, 0.85)' : 'transparent',
-        backdropFilter: isScrolled ? 'blur(16px)' : 'blur(0px)',
-        WebkitBackdropFilter: isScrolled ? 'blur(16px)' : 'blur(0px)',
-        borderBottom: isScrolled ? '1px solid rgba(56, 189, 248, 0.15)' : '1px solid transparent',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        transition: 'all 0.3s ease'
-      }}
-    >
+    <header style={{
+      width: '100%',
+      height: '64px',
+      background: 'rgba(7, 11, 20, 0.85)',
+      backdropFilter: 'blur(16px)',
+      borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0 20px',
+      position: 'sticky',
+      top: 0,
+      zIndex: 100
+    }}>
+      {/* Brand Logo */}
       <div 
-        onClick={() => onNavigate('home')} 
+        onClick={() => onNavigate('home')}
         style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
       >
         <div style={{
-          width: '32px',
-          height: '32px',
-          borderRadius: '8px',
-          background: 'linear-gradient(135deg, #38bdf8, #6366f1)',
+          width: '36px',
+          height: '36px',
+          borderRadius: '10px',
+          background: 'linear-gradient(135deg, #00f0ff, #3b82f6)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontWeight: '900',
-          color: '#fff',
-          fontSize: '14px'
-        }}>
-          G
-        </div>
-        <span style={{
           fontSize: '18px',
-          fontWeight: '900',
-          background: 'linear-gradient(to right, #ffffff, #38bdf8)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent'
+          boxShadow: '0 0 16px rgba(0, 240, 255, 0.4)'
         }}>
-          NEXUS ARENA
-        </span>
+          ⚡
+        </div>
+        <div>
+          <span style={{ fontSize: '16px', fontWeight: '900', letterSpacing: '1px', background: 'linear-gradient(90deg, #ffffff, #38bdf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            NEXUS
+          </span>
+          <span style={{ fontSize: '16px', fontWeight: '900', color: '#00f0ff', marginLeft: '4px' }}>
+            ARCADE
+          </span>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-        <button 
+      {/* Navigation Pill Buttons */}
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <button
           onClick={() => onNavigate('home')}
           style={{
-            background: 'none',
-            border: 'none',
+            padding: '7px 14px',
+            borderRadius: '10px',
+            border: activeTab === 'home' ? '1px solid #38bdf8' : '1px solid transparent',
+            background: activeTab === 'home' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
             color: activeTab === 'home' ? '#38bdf8' : '#94a3b8',
-            fontWeight: '600',
+            fontSize: '12px',
+            fontWeight: '700',
             cursor: 'pointer',
-            fontSize: '13px'
+            transition: 'all 0.2s'
           }}
         >
-          All Games
+          🎮 Hub
         </button>
 
-        <button 
+        <button
           onClick={() => onNavigate('daam')}
-          style={{ 
-            background: 'linear-gradient(135deg, #0284c7, #2563eb)', 
-            color: '#fff', 
-            border: 'none', 
-            padding: '7px 16px', 
-            borderRadius: '20px', 
-            fontWeight: '700', 
-            fontSize: '12px', 
-            cursor: 'pointer'
+          style={{
+            padding: '7px 14px',
+            borderRadius: '10px',
+            border: activeTab === 'daam' ? '1px solid #38bdf8' : '1px solid transparent',
+            background: activeTab === 'daam' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+            color: activeTab === 'daam' ? '#38bdf8' : '#94a3b8',
+            fontSize: '12px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
           }}
         >
-          Play Daam 3D
+          ♟️ 3D Daam
+        </button>
+
+        <button
+          onClick={() => onNavigate('tank')}
+          style={{
+            padding: '7px 14px',
+            borderRadius: '10px',
+            border: activeTab === 'tank' ? '1px solid #00f0ff' : '1px solid transparent',
+            background: activeTab === 'tank' ? 'rgba(0, 240, 255, 0.15)' : 'transparent',
+            color: activeTab === 'tank' ? '#00f0ff' : '#94a3b8',
+            fontSize: '12px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+        >
+          🛡️ Tank 4P
         </button>
       </div>
-    </motion.nav>
+    </header>
   );
 }
