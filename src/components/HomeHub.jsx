@@ -1,21 +1,115 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function HomeHub({ onSelectGame }) {
-  const [mousePos, setMousePos] = useState({ x: -600, y: -600 });
+  const [mousePos, setMousePos] = useState({ x: -800, y: -800 });
   const [touchRipples, setTouchRipples] = useState([]);
+  const canvasRef = useRef(null);
+  const particlesRef = useRef([]);
 
-  // Full Viewport Mouse Tracking (කිසිදු Container එකකට සීමා නොවේ)
+  // Particle System Animation (Canvas 60fps)
   useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // Initial ambient floating background particles
+    const ambientCount = 35;
+    for (let i = 0; i < ambientCount; i++) {
+      particlesRef.current.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
+        size: Math.random() * 2.5 + 1.2,
+        color: Math.random() > 0.5 ? '#38bdf8' : '#818cf8',
+        alpha: Math.random() * 0.4 + 0.15,
+        isAmbient: true
+      });
+    }
+
+    let animId;
+    const render = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = particlesRef.current.length - 1; i >= 0; i--) {
+        const p = particlesRef.current[i];
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.isAmbient) {
+          if (p.x < 0) p.x = canvas.width;
+          if (p.x > canvas.width) p.x = 0;
+          if (p.y < 0) p.y = canvas.height;
+          if (p.y > canvas.height) p.y = 0;
+        } else {
+          p.alpha -= 0.025; // Particle trail decay
+          p.size *= 0.96;
+          if (p.alpha <= 0 || p.size <= 0.2) {
+            particlesRef.current.splice(i, 1);
+            continue;
+          }
+        }
+
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = p.isAmbient ? 6 : 14;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      animId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resizeCanvas);
+    };
+  }, []);
+
+  // Global Mouse Move & Trail Particle Spawn
+  useEffect(() => {
+    let lastSpawn = 0;
+
     const handleGlobalMouseMove = (e) => {
       setMousePos({ x: e.clientX, y: e.clientY });
+
+      const now = Date.now();
+      if (now - lastSpawn > 25) { // Spawn particle every 25ms
+        lastSpawn = now;
+        for (let i = 0; i < 2; i++) {
+          particlesRef.current.push({
+            x: e.clientX + (Math.random() - 0.5) * 16,
+            y: e.clientY + (Math.random() - 0.5) * 16,
+            vx: (Math.random() - 0.5) * 1.5,
+            vy: (Math.random() - 0.5) * 1.5,
+            size: Math.random() * 3.5 + 1.5,
+            color: Math.random() > 0.4 ? '#00f0ff' : '#a855f7',
+            alpha: 0.8,
+            isAmbient: false
+          });
+        }
+      }
     };
 
     window.addEventListener('mousemove', handleGlobalMouseMove);
     return () => window.removeEventListener('mousemove', handleGlobalMouseMove);
   }, []);
 
-  // Mobile Touch Ripple
+  // Mobile Touch Ripple & Sparks
   const handleTouchStart = (e) => {
     const touch = e.touches[0];
     const newRipple = {
@@ -24,6 +118,22 @@ export default function HomeHub({ onSelectGame }) {
       y: touch.clientY
     };
     setTouchRipples((prev) => [...prev.slice(-3), newRipple]);
+
+    // Spawn touch sparkles
+    for (let i = 0; i < 8; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 2.5 + 1.0;
+      particlesRef.current.push({
+        x: touch.clientX,
+        y: touch.clientY,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: Math.random() * 4 + 2,
+        color: Math.random() > 0.5 ? '#00f0ff' : '#ec4899',
+        alpha: 1.0,
+        isAmbient: false
+      });
+    }
   };
 
   useEffect(() => {
@@ -81,33 +191,49 @@ export default function HomeHub({ onSelectGame }) {
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        overflow: 'hidden'
       }}
     >
-      {/* 🌟 Screen-Wide Fixed Glow Layer (No Box Boundaries) */}
+      {/* 🌌 Background Floating Particle Canvas */}
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          pointerEvents: 'none',
+          zIndex: 0
+        }}
+      />
+
+      {/* 🌟 Ambient Floating Blurred Bokeh Orbs */}
+      <div style={{ position: 'fixed', top: '15%', left: '10%', width: '380px', height: '380px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(56, 189, 248, 0.09) 0%, transparent 70%)', filter: 'blur(50px)', pointerEvents: 'none', zIndex: 0 }} />
+      <div style={{ position: 'fixed', bottom: '15%', right: '10%', width: '420px', height: '420px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(168, 85, 247, 0.08) 0%, transparent 70%)', filter: 'blur(60px)', pointerEvents: 'none', zIndex: 0 }} />
+
+      {/* 💡 Dual-Tone Screen-Wide Interactive Cursor Glow */}
       <div
         style={{
           position: 'fixed',
           left: mousePos.x,
           top: mousePos.y,
-          width: '700px',
-          height: '700px',
+          width: '780px',
+          height: '780px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(0, 240, 255, 0.12) 0%, rgba(56, 189, 248, 0.04) 45%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(0, 240, 255, 0.16) 0%, rgba(99, 102, 241, 0.07) 40%, transparent 70%)',
           transform: 'translate(-50%, -50%)',
           pointerEvents: 'none',
           zIndex: 0,
-          transition: 'left 0.06s ease-out, top 0.06s ease-out'
+          transition: 'left 0.05s ease-out, top 0.05s ease-out'
         }}
       />
 
-      {/* Mobile Touch Ripples Layer */}
+      {/* Mobile Touch Ripple Layer */}
       <AnimatePresence>
         {touchRipples.map((r) => (
           <motion.div
             key={r.id}
-            initial={{ scale: 0.2, opacity: 0.8 }}
-            animate={{ scale: 3.2, opacity: 0 }}
+            initial={{ scale: 0.2, opacity: 0.9 }}
+            animate={{ scale: 3.5, opacity: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.7, ease: 'easeOut' }}
             style={{
@@ -117,8 +243,8 @@ export default function HomeHub({ onSelectGame }) {
               width: '80px',
               height: '80px',
               borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(0, 240, 255, 0.4) 0%, transparent 80%)',
-              border: '1px solid rgba(0, 240, 255, 0.6)',
+              background: 'radial-gradient(circle, rgba(0, 240, 255, 0.5) 0%, transparent 80%)',
+              border: '1.5px solid rgba(0, 240, 255, 0.7)',
               transform: 'translate(-50%, -50%)',
               pointerEvents: 'none',
               zIndex: 0
@@ -143,7 +269,8 @@ export default function HomeHub({ onSelectGame }) {
             padding: '6px 16px',
             borderRadius: '30px',
             background: 'rgba(0, 240, 255, 0.08)',
-            border: '1px solid rgba(0, 240, 255, 0.25)',
+            border: '1px solid rgba(0, 240, 255, 0.3)',
+            boxShadow: '0 0 20px rgba(0, 240, 255, 0.15)',
             marginBottom: '14px'
           }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00f0ff', boxShadow: '0 0 10px #00f0ff' }} />
@@ -179,13 +306,13 @@ export default function HomeHub({ onSelectGame }) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.1 }}
-              whileHover={g.active ? { y: -6, boxShadow: '0 20px 45px rgba(0, 0, 0, 0.7)' } : {}}
+              whileHover={g.active ? { y: -7, boxShadow: '0 20px 45px rgba(0, 0, 0, 0.8), 0 0 25px rgba(56, 189, 248, 0.2)' } : {}}
               onClick={() => g.active && onSelectGame(g.id)}
               style={{
-                background: 'rgba(15, 23, 42, 0.75)',
-                backdropFilter: 'blur(16px)',
+                background: 'rgba(15, 23, 42, 0.72)',
+                backdropFilter: 'blur(18px)',
                 borderRadius: '24px',
-                border: `1px solid ${g.active ? 'rgba(56, 189, 248, 0.2)' : 'rgba(51, 65, 85, 0.4)'}`,
+                border: `1px solid ${g.active ? 'rgba(56, 189, 248, 0.25)' : 'rgba(51, 65, 85, 0.4)'}`,
                 padding: '24px',
                 cursor: g.active ? 'pointer' : 'not-allowed',
                 opacity: g.active ? 1 : 0.6,
@@ -210,7 +337,7 @@ export default function HomeHub({ onSelectGame }) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: '24px',
-                    boxShadow: `0 0 20px ${g.badgeColor}20`
+                    boxShadow: `0 0 20px ${g.badgeColor}25`
                   }}>
                     {g.icon}
                   </div>
@@ -257,7 +384,7 @@ export default function HomeHub({ onSelectGame }) {
                   fontWeight: '900',
                   fontSize: '13px',
                   cursor: g.active ? 'pointer' : 'not-allowed',
-                  boxShadow: g.active ? `0 8px 25px ${g.badgeColor}30` : 'none',
+                  boxShadow: g.active ? `0 8px 25px ${g.badgeColor}35` : 'none',
                   letterSpacing: '0.5px'
                 }}
               >
