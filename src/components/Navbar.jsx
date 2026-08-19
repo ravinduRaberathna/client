@@ -36,32 +36,30 @@ export default function Navbar({ onNavigate, activeTab }) {
         justifyContent: 'space-between'
       }}>
         
-        {/* Brand Logo */}
+        {/* Brand Text Only (Logo Icon Removed) */}
         <div 
           onClick={() => handleItemClick('home')}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}
+          style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
         >
-          <div style={{
-            width: '34px',
-            height: '34px',
-            borderRadius: '10px',
-            background: 'linear-gradient(135deg, #00f0ff, #3b82f6)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '16px',
-            boxShadow: '0 0 16px rgba(0, 240, 255, 0.4)'
+          <span style={{ 
+            fontSize: '16px', 
+            fontWeight: '900', 
+            letterSpacing: '1px', 
+            background: 'linear-gradient(90deg, #ffffff, #38bdf8)', 
+            WebkitBackgroundClip: 'text', 
+            WebkitTextFillColor: 'transparent' 
           }}>
-            ⚡
-          </div>
-          <div>
-            <span style={{ fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', background: 'linear-gradient(90deg, #ffffff, #38bdf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              NEXUS
-            </span>
-            <span style={{ fontSize: '15px', fontWeight: '900', color: '#00f0ff', marginLeft: '3px' }}>
-              ARCADE
-            </span>
-          </div>
+            NEXUS
+          </span>
+          <span style={{ 
+            fontSize: '16px', 
+            fontWeight: '900', 
+            letterSpacing: '1px',
+            color: '#00f0ff', 
+            marginLeft: '5px' 
+          }}>
+            ARCADE
+          </span>
         </div>
 
         {/* Desktop Navigation Links */}
