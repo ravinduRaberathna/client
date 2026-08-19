@@ -10,7 +10,7 @@ import { calculateValidMoves, calculateCapturesOnly, checkKingPromotion, getGame
 import { getBestAiMove } from './utils/aiLogic';
 import { sounds } from './utils/audio';
 
-const socket = io('https://web-production-b7ad7.up.railway.app', {
+const socket = io('https://server-production-836b.up.railway.app', {
   transports: ['websocket', 'polling'],
   autoConnect: true
 });
@@ -250,13 +250,28 @@ export default function App() {
     }
   };
 
+  // Hand Tracker Trigger Click Simulator for 3D Canvas
+  const handleHandTriggerClick = (x, y) => {
+    const targetElem = document.elementFromPoint(x, y);
+    if (targetElem) {
+      const clickEvent = new MouseEvent('click', {
+        clientX: x,
+        clientY: y,
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      targetElem.dispatchEvent(clickEvent);
+    }
+  };
+
   const isMyTurn = currentTurn === myColor;
 
   return (
     <div style={{ width: '100vw', minHeight: '100vh', backgroundColor: '#070b14', color: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative' }}>
       <Navbar onNavigate={setCurrentView} activeTab={currentView} />
 
-      {/* 1. Home View */}
+      {/* Home View */}
       {currentView === 'home' && (
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <HomeHub onSelectGame={(gameId) => {
@@ -266,14 +281,14 @@ export default function App() {
         </div>
       )}
 
-      {/* 2. Tank Game View */}
+      {/* Tank Game View */}
       {currentView === 'tank' && (
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <TankGame socket={socket} onBackToHub={() => setCurrentView('home')} />
         </div>
       )}
 
-      {/* 3. 3D Daam View */}
+      {/* 3D Daam View */}
       {currentView === 'daam' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '6px 12px 12px 12px', maxWidth: '1400px', width: '100%', margin: '0 auto', position: 'relative' }}>
           
@@ -450,25 +465,11 @@ export default function App() {
                 </div>
 
                 <div className="daam-side-panel">
-                 {/* Right Side Panel ඇතුළේ HandTracker කොටස */}
-<HandTracker 
-  onCursorMove={setCursorPos}
-  onPinchStateChange={setIsPinching}
-  onTriggerClick={(x, y) => {
-    // Canvas එක උඩට හරියටම Click Event එක යැවීම
-    const targetElem = document.elementFromPoint(x, y);
-    if (targetElem) {
-      const clickEvent = new MouseEvent('click', {
-        clientX: x,
-        clientY: y,
-        bubbles: true,
-        cancelable: true,
-        view: window
-      });
-      targetElem.dispatchEvent(clickEvent);
-    }
-  }}
-/>
+                  <HandTracker 
+                    onCursorMove={setCursorPos}
+                    onPinchStateChange={setIsPinching}
+                    onTriggerClick={handleHandTriggerClick}
+                  />
 
                   <div style={{
                     background: 'rgba(15, 23, 42, 0.75)',
@@ -501,7 +502,7 @@ export default function App() {
             </div>
           )}
 
-          {/* 🌟 CINEMATIC VICTORY / DEFEAT MODAL OVERLAY */}
+          {/* Victory / Defeat Modal Overlay */}
           <AnimatePresence>
             {isGameOver && (
               <motion.div
@@ -543,7 +544,6 @@ export default function App() {
                     overflow: 'hidden'
                   }}
                 >
-                  {/* Top Ambient Glow Line */}
                   <div style={{
                     position: 'absolute',
                     top: 0,
@@ -555,7 +555,6 @@ export default function App() {
                       : 'linear-gradient(90deg, transparent, #ef4444, transparent)'
                   }} />
 
-                  {/* Animated Badge Icon */}
                   <motion.div
                     animate={isWinner 
                       ? { rotate: [0, -10, 10, -5, 5, 0], scale: [1, 1.15, 1] } 
@@ -578,7 +577,6 @@ export default function App() {
                     {isWinner ? '🏆' : '💀'}
                   </motion.div>
 
-                  {/* Outcome Title Banner */}
                   <motion.h1
                     initial={{ y: 10, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
@@ -601,7 +599,6 @@ export default function App() {
                       : (gameMode === 'ai' ? 'The Grandmaster AI captured all your forces.' : 'Your opposing rival claimed victory in this match.')}
                   </p>
 
-                  {/* Match Stats Summary Pill */}
                   <div style={{
                     display: 'flex',
                     justifyContent: 'space-around',
@@ -622,7 +619,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Modal Action Buttons */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <motion.button
                       whileHover={{ scale: 1.03 }}
