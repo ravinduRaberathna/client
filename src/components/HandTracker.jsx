@@ -1,130 +1,181 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import { Camera } from '@mediapipe/camera_utils';
+import { Hands } from '@mediapipe/hands';
 
-export default function HandTracker({ onCursorMove, onPinchStateChange }) {
+export default function HandTracker({ onCursorMove, onPinchStateChange, onTriggerClick }) {
   const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const [cameraActive, setCameraActive] = useState(false);
-  const [isPinching, setIsPinching] = useState(false);
-  const [pinchDist, setPinchDist] = useState(1);
+  const [isActive, setIsActive] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const wasPinchingRef = useRef(false);
+  const lastPosRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
 
   useEffect(() => {
-    if (!cameraActive || !videoRef.current || !canvasRef.current) return;
+    let camera = null;
+    let hands = null;
 
-    const videoElement = videoRef.current;
-    const canvasElement = canvasRef.current;
-    const canvasCtx = canvasElement.getContext('2d');
+    if (isActive && videoRef.current) {
+      setIsLoading(true);
 
-    if (!window.Hands || !window.Camera) {
-      console.error("MediaPipe scripts not loaded yet");
-      return;
+      hands = new Hands({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+      });
+
+      hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6
+      });
+
+      hands.onResults((results) => {
+        setIsLoading(false);
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+          const landmarks = results.multiHandLandmarks[0];
+
+          // Index finger tip (Landmark 8) & Thumb tip (Landmark 4)
+          const indexFinger = landmarks[8];
+          const thumb = landmarks[4];
+
+          // Mirror X for intuitive control
+          const screenX = (1 - indexFinger.x) * window.innerWidth;
+          const screenY = indexFinger.y * window.innerHeight;
+
+          lastPosRef.current = { x: screenX, y: screenY };
+          if (onCursorMove) onCursorMove({ x: screenX, y: screenY });
+
+          // Calculate Pinch Distance between Thumb & Index Finger
+          const distance = Math.hypot(
+            (1 - thumb.x) - (1 - indexFinger.x),
+            thumb.y - indexFinger.y
+          );
+
+          const isPinching = distance < 0.08;
+          if (onPinchStateChange) onPinchStateChange(isPinching);
+
+          // If Pinch state changed from NOT pinching to PINCHING -> Trigger Click
+          if (isPinching && !wasPinchingRef.current) {
+            wasPinchingRef.current = true;
+            
+            // Trigger programmatic 3D Click at current cursor position
+            if (onTriggerClick) {
+              onTriggerClick(screenX, screenY);
+            } else {
+              // Direct DOM synthetic click fallback
+              const elem = document.elementFromPoint(screenX, screenY);
+              if (elem) {
+                elem.dispatchEvent(
+                  new MouseEvent('click', {
+                    clientX: screenX,
+                    clientY: screenY,
+                    bubbles: true,
+                    cancelable: true,
+                    view: window
+                  })
+                );
+              }
+            }
+          } else if (!isPinching && wasPinchingRef.current) {
+            wasPinchingRef.current = false;
+          }
+        }
+      });
+
+      camera = new Camera(videoRef.current, {
+        onFrame: async () => {
+          if (videoRef.current) {
+            await hands.send({ image: videoRef.current });
+          }
+        },
+        width: 320,
+        height: 240
+      });
+
+      camera.start();
     }
 
-    const hands = new window.Hands({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-    });
-
-    hands.setOptions({
-      maxNumHands: 1,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5
-    });
-
-    hands.onResults((results) => {
-      canvasCtx.save();
-      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
-      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-        const landmarks = results.multiHandLandmarks[0];
-
-        const thumbTip = landmarks[4];
-        const indexTip = landmarks[8];
-
-        // Screen Mirroring Cursor
-        const cursorX = (1 - indexTip.x) * window.innerWidth;
-        const cursorY = indexTip.y * window.innerHeight;
-
-        // Euclidean Distance
-        const distance = Math.hypot(
-          indexTip.x - thumbTip.x,
-          indexTip.y - thumbTip.y
-        );
-
-        setPinchDist(distance.toFixed(3));
-
-        // Pinch Threshold (0.085 - ඉතාම පහසුවෙන් Trigger වේ)
-        const pinchingNow = distance < 0.085;
-
-        setIsPinching(pinchingNow);
-        if (onPinchStateChange) onPinchStateChange(pinchingNow);
-        if (onCursorMove) onCursorMove({ x: cursorX, y: cursorY });
-
-        // Draw points on canvas
-        landmarks.forEach((pt, index) => {
-          const x = (1 - pt.x) * canvasElement.width;
-          const y = pt.y * canvasElement.height;
-          canvasCtx.beginPath();
-          canvasCtx.arc(x, y, (index === 4 || index === 8) ? 6 : 2.5, 0, 2 * Math.PI);
-          canvasCtx.fillStyle = pinchingNow ? '#10b981' : (index === 8 ? '#38bdf8' : '#ef4444');
-          canvasCtx.fill();
-        });
-      }
-      canvasCtx.restore();
-    });
-
-    const camera = new window.Camera(videoElement, {
-      onFrame: async () => {
-        await hands.send({ image: videoElement });
-      },
-      width: 320,
-      height: 240
-    });
-
-    camera.start();
-
     return () => {
-      camera.stop();
-      hands.close();
+      if (camera) camera.stop();
+      if (hands) hands.close();
     };
-  }, [cameraActive]);
+  }, [isActive]);
 
   return (
-    <div style={{ background: '#1e293b', padding: '14px', borderRadius: '12px', border: '1px solid #334155' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-        <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#94a3b8' }}>WebCam Tracking</span>
+    <div style={{
+      background: 'rgba(15, 23, 42, 0.75)',
+      backdropFilter: 'blur(16px)',
+      borderRadius: '12px',
+      border: '1px solid rgba(255, 255, 255, 0.08)',
+      padding: '8px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '6px'
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontSize: '10px', fontWeight: '800', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>🖐️ AI HAND TRACKING</span>
+          {isActive && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />}
+        </div>
         <button
-          onClick={() => setCameraActive(!cameraActive)}
+          onClick={() => setIsActive(!isActive)}
           style={{
-            background: cameraActive ? '#ef4444' : '#10b981',
-            color: '#fff',
-            border: 'none',
-            padding: '6px 12px',
+            padding: '3px 8px',
             borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '12px',
-            fontWeight: '600'
+            border: 'none',
+            background: isActive ? '#ef4444' : 'linear-gradient(135deg, #0284c7, #2563eb)',
+            color: '#fff',
+            fontSize: '9px',
+            fontWeight: '800',
+            cursor: 'pointer'
           }}
         >
-          {cameraActive ? 'Stop' : 'Start'}
+          {isActive ? 'Stop' : 'Start Camera'}
         </button>
       </div>
 
-      <div style={{ position: 'relative', width: '100%', height: '140px', background: '#020617', borderRadius: '8px', overflow: 'hidden' }}>
-        <video ref={videoRef} playsInline style={{ display: 'none' }} />
-        <canvas ref={canvasRef} width={220} height={140} style={{ width: '100%', height: '100%' }} />
-        {!cameraActive && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '12px' }}>
-            Camera Inactive
+      <div style={{
+        position: 'relative',
+        width: '100%',
+        height: '110px',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        background: '#020617',
+        border: '1px solid rgba(56, 189, 248, 0.2)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <video
+          ref={videoRef}
+          playsInline
+          muted
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            transform: 'scaleX(-1)',
+            display: isActive ? 'block' : 'none'
+          }}
+        />
+
+        {!isActive && (
+          <div style={{ textAlign: 'center', color: '#64748b', fontSize: '9px' }}>
+            Camera Inactive<br />
+            <span style={{ color: '#38bdf8' }}>Pinch 👌 to select/move pieces</span>
+          </div>
+        )}
+
+        {isLoading && (
+          <div style={{ position: 'absolute', color: '#38bdf8', fontSize: '10px', fontWeight: '700' }}>
+            Loading AI Vision...
           </div>
         )}
       </div>
 
-      <div style={{ marginTop: '10px', fontSize: '12px', textAlign: 'center' }}>
-        <span style={{ color: isPinching ? '#10b981' : '#94a3b8', fontWeight: 'bold' }}>
-          {isPinching ? '👌 PINCH ACTIVE' : '🖐 TRACKING'}
-        </span>
-        <div style={{ color: '#64748b', fontSize: '11px', marginTop: '3px' }}>Gap: {pinchDist} (Threshold: &lt; 0.085)</div>
-      </div>
+      {isActive && (
+        <div style={{ fontSize: '8.5px', color: '#94a3b8', textAlign: 'center' }}>
+          💡 <strong>Tip:</strong> Move index finger to aim • Pinch (👌) to Play
+        </div>
+      )}
     </div>
   );
 }
