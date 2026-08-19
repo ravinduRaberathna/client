@@ -1,12 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { Canvas } from '@react-three/fiber';
+import React, { useState, useEffect, useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Center, RoundedBox } from '@react-three/drei';
+import * as THREE from 'three';
 
-function Piece({ position, color, isKing, isSelected, onClick }) {
+// 3D Animated Piece Component (Drop-in Animation)
+function Piece({ position, color, isKing, isSelected, onClick, index, isIntroPlaying }) {
   const isRed = color === 'red';
+  const groupRef = useRef();
+
+  // Initial fall offset for intro
+  const targetY = isKing ? 0.35 : 0.22;
+  const startY = targetY + 3.0 + (index * 0.08); // Staggered heights
+  const currentY = useRef(startY);
+
+  useFrame((state, delta) => {
+    if (groupRef.current) {
+      if (isIntroPlaying) {
+        // Smooth gravity drop towards tile
+        currentY.current = THREE.MathUtils.damp(currentY.current, targetY, 6, delta);
+        groupRef.current.position.y = currentY.current;
+      } else {
+        groupRef.current.position.y = targetY;
+      }
+    }
+  });
 
   return (
-    <group position={[position[0], isKing ? 0.35 : 0.22, position[2]]}>
+    <group 
+      ref={groupRef}
+      position={[position[0], isIntroPlaying ? startY : targetY, position[2]]}
+    >
       <mesh
         onClick={(e) => {
           e.stopPropagation();
@@ -52,7 +75,8 @@ function Piece({ position, color, isKing, isSelected, onClick }) {
   );
 }
 
-function Tile({ x, z, isDark, isValidMove, isSelected, onPieceClick, onTileClick, piece }) {
+// 3D Tile Component
+function Tile({ x, z, isDark, isValidMove, isSelected, onPieceClick, onTileClick, piece, pieceIndex, isIntroPlaying }) {
   let tileColor = isDark ? '#111318' : '#f1f5f9';
   if (isSelected) tileColor = '#0284c7';
   if (isValidMove) tileColor = '#059669';
@@ -95,8 +119,35 @@ function Tile({ x, z, isDark, isValidMove, isSelected, onPieceClick, onTileClick
           isKing={piece.isKing}
           isSelected={isSelected}
           onClick={() => onPieceClick(z, x)}
+          index={pieceIndex}
+          isIntroPlaying={isIntroPlaying}
         />
       )}
+    </group>
+  );
+}
+
+// Animated Board Arena Rig (Board Spawning Rig)
+function AnimatedBoardGroup({ children, isIntroPlaying }) {
+  const groupRef = useRef();
+
+  useFrame((state, delta) => {
+    if (groupRef.current && isIntroPlaying) {
+      // Gentle spin and scale into target view
+      groupRef.current.scale.x = THREE.MathUtils.damp(groupRef.current.scale.x, 1, 4, delta);
+      groupRef.current.scale.y = THREE.MathUtils.damp(groupRef.current.scale.y, 1, 4, delta);
+      groupRef.current.scale.z = THREE.MathUtils.damp(groupRef.current.scale.z, 1, 4, delta);
+      groupRef.current.rotation.y = THREE.MathUtils.damp(groupRef.current.rotation.y, 0, 3, delta);
+    }
+  });
+
+  return (
+    <group 
+      ref={groupRef}
+      scale={isIntroPlaying ? [0.2, 0.2, 0.2] : [1, 1, 1]}
+      rotation={isIntroPlaying ? [0, Math.PI / 4, 0] : [0, 0, 0]}
+    >
+      {children}
     </group>
   );
 }
@@ -109,6 +160,7 @@ export default function Board3D({
   onTileClick
 }) {
   const [isMobile, setIsMobile] = useState(false);
+  const [isIntroPlaying, setIsIntroPlaying] = useState(true);
 
   useEffect(() => {
     const handleResize = () => {
@@ -116,8 +168,19 @@ export default function Board3D({
     };
     handleResize();
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+
+    // Intro Animation Duration (1.6 seconds)
+    const timer = setTimeout(() => {
+      setIsIntroPlaying(false);
+    }, 1600);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(timer);
+    };
   }, []);
+
+  let pieceCounter = 0;
 
   return (
     <div
@@ -158,49 +221,58 @@ export default function Board3D({
         />
 
         <Center position={[0, 0, 0]}>
-          <RoundedBox args={[8.8, 0.28, 8.8]} radius={0.06} smoothness={4} position={[0, -0.16, 0]}>
-            <meshStandardMaterial
-              color="#090b10"
-              metalness={0.3}
-              roughness={0.2}
-            />
-          </RoundedBox>
+          <AnimatedBoardGroup isIntroPlaying={isIntroPlaying}>
+            {/* Main Obsidian Base Plinth */}
+            <RoundedBox args={[8.8, 0.28, 8.8]} radius={0.06} smoothness={4} position={[0, -0.16, 0]}>
+              <meshStandardMaterial
+                color="#090b10"
+                metalness={0.3}
+                roughness={0.2}
+              />
+            </RoundedBox>
 
-          <mesh position={[0, -0.03, 0]}>
-            <boxGeometry args={[8.65, 0.03, 8.65]} />
-            <meshStandardMaterial
-              color="#cbd5e1"
-              metalness={0.8}
-              roughness={0.2}
-            />
-          </mesh>
+            {/* Inner Metallic Rim Inset */}
+            <mesh position={[0, -0.03, 0]}>
+              <boxGeometry args={[8.65, 0.03, 8.65]} />
+              <meshStandardMaterial
+                color="#cbd5e1"
+                metalness={0.8}
+                roughness={0.2}
+              />
+            </mesh>
 
-          {boardState.map((row, rIdx) =>
-            row.map((piece, cIdx) => {
-              const isDark = (rIdx + cIdx) % 2 === 1;
-              const isSelected =
-                selectedPiece &&
-                selectedPiece.row === rIdx &&
-                selectedPiece.col === cIdx;
-              const isValid = validMoves.some(
-                (m) => m.row === rIdx && m.col === cIdx
-              );
+            {/* 8x8 Board Matrix with Cascade Drop Pieces */}
+            {boardState.map((row, rIdx) =>
+              row.map((piece, cIdx) => {
+                const isDark = (rIdx + cIdx) % 2 === 1;
+                const isSelected =
+                  selectedPiece &&
+                  selectedPiece.row === rIdx &&
+                  selectedPiece.col === cIdx;
+                const isValid = validMoves.some(
+                  (m) => m.row === rIdx && m.col === cIdx
+                );
 
-              return (
-                <Tile
-                  key={`${rIdx}-${cIdx}`}
-                  x={cIdx}
-                  z={rIdx}
-                  isDark={isDark}
-                  isSelected={isSelected}
-                  isValidMove={isValid}
-                  piece={piece}
-                  onPieceClick={onPieceClick}
-                  onTileClick={onTileClick}
-                />
-              );
-            })
-          )}
+                if (piece) pieceCounter++;
+
+                return (
+                  <Tile
+                    key={`${rIdx}-${cIdx}`}
+                    x={cIdx}
+                    z={rIdx}
+                    isDark={isDark}
+                    isSelected={isSelected}
+                    isValidMove={isValid}
+                    piece={piece}
+                    pieceIndex={pieceCounter}
+                    isIntroPlaying={isIntroPlaying}
+                    onPieceClick={onPieceClick}
+                    onTileClick={onTileClick}
+                  />
+                );
+              })
+            )}
+          </AnimatedBoardGroup>
         </Center>
       </Canvas>
     </div>
