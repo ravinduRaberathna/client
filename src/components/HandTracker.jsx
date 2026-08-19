@@ -1,6 +1,20 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Camera } from '@mediapipe/camera_utils';
-import { Hands } from '@mediapipe/hands';
+
+// Helper function to dynamically load MediaPipe scripts from CDN
+const loadScript = (src) => {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) {
+      resolve();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = src;
+    script.crossOrigin = 'anonymous';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+    document.body.appendChild(script);
+  });
+};
 
 export default function HandTracker({ onCursorMove, onPinchStateChange, onTriggerClick }) {
   const videoRef = useRef(null);
@@ -10,92 +24,100 @@ export default function HandTracker({ onCursorMove, onPinchStateChange, onTrigge
   const lastPosRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
 
   useEffect(() => {
-    let camera = null;
-    let hands = null;
+    let cameraInstance = null;
+    let handsInstance = null;
+    let isCancelled = false;
 
-    if (isActive && videoRef.current) {
+    const initHandTracking = async () => {
+      if (!isActive || !videoRef.current) return;
+
       setIsLoading(true);
 
-      hands = new Hands({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-      });
+      try {
+        // Load MediaPipe scripts from official CDN
+        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
+        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js');
 
-      hands.setOptions({
-        maxNumHands: 1,
-        modelComplexity: 1,
-        minDetectionConfidence: 0.6,
-        minTrackingConfidence: 0.6
-      });
+        if (isCancelled) return;
 
-      hands.onResults((results) => {
-        setIsLoading(false);
-        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-          const landmarks = results.multiHandLandmarks[0];
+        const { Camera } = window;
+        const { Hands } = window;
 
-          // Index finger tip (Landmark 8) & Thumb tip (Landmark 4)
-          const indexFinger = landmarks[8];
-          const thumb = landmarks[4];
-
-          // Mirror X for intuitive control
-          const screenX = (1 - indexFinger.x) * window.innerWidth;
-          const screenY = indexFinger.y * window.innerHeight;
-
-          lastPosRef.current = { x: screenX, y: screenY };
-          if (onCursorMove) onCursorMove({ x: screenX, y: screenY });
-
-          // Calculate Pinch Distance between Thumb & Index Finger
-          const distance = Math.hypot(
-            (1 - thumb.x) - (1 - indexFinger.x),
-            thumb.y - indexFinger.y
-          );
-
-          const isPinching = distance < 0.08;
-          if (onPinchStateChange) onPinchStateChange(isPinching);
-
-          // If Pinch state changed from NOT pinching to PINCHING -> Trigger Click
-          if (isPinching && !wasPinchingRef.current) {
-            wasPinchingRef.current = true;
-            
-            // Trigger programmatic 3D Click at current cursor position
-            if (onTriggerClick) {
-              onTriggerClick(screenX, screenY);
-            } else {
-              // Direct DOM synthetic click fallback
-              const elem = document.elementFromPoint(screenX, screenY);
-              if (elem) {
-                elem.dispatchEvent(
-                  new MouseEvent('click', {
-                    clientX: screenX,
-                    clientY: screenY,
-                    bubbles: true,
-                    cancelable: true,
-                    view: window
-                  })
-                );
-              }
-            }
-          } else if (!isPinching && wasPinchingRef.current) {
-            wasPinchingRef.current = false;
-          }
+        if (!Camera || !Hands) {
+          throw new Error('MediaPipe libraries failed to initialize on window object.');
         }
-      });
 
-      camera = new Camera(videoRef.current, {
-        onFrame: async () => {
-          if (videoRef.current) {
-            await hands.send({ image: videoRef.current });
+        handsInstance = new Hands({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+
+        handsInstance.setOptions({
+          maxNumHands: 1,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.6,
+          minTrackingConfidence: 0.6
+        });
+
+        handsInstance.onResults((results) => {
+          setIsLoading(false);
+          if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            const landmarks = results.multiHandLandmarks[0];
+
+            // Index finger tip (Landmark 8) & Thumb tip (Landmark 4)
+            const indexFinger = landmarks[8];
+            const thumb = landmarks[4];
+
+            // Mirror X for intuitive control
+            const screenX = (1 - indexFinger.x) * window.innerWidth;
+            const screenY = indexFinger.y * window.innerHeight;
+
+            lastPosRef.current = { x: screenX, y: screenY };
+            if (onCursorMove) onCursorMove({ x: screenX, y: screenY });
+
+            // Calculate Pinch Distance
+            const distance = Math.hypot(
+              (1 - thumb.x) - (1 - indexFinger.x),
+              thumb.y - indexFinger.y
+            );
+
+            const isPinching = distance < 0.08;
+            if (onPinchStateChange) onPinchStateChange(isPinching);
+
+            // Trigger Click on pinch start
+            if (isPinching && !wasPinchingRef.current) {
+              wasPinchingRef.current = true;
+              if (onTriggerClick) {
+                onTriggerClick(screenX, screenY);
+              }
+            } else if (!isPinching && wasPinchingRef.current) {
+              wasPinchingRef.current = false;
+            }
           }
-        },
-        width: 320,
-        height: 240
-      });
+        });
 
-      camera.start();
-    }
+        cameraInstance = new Camera(videoRef.current, {
+          onFrame: async () => {
+            if (videoRef.current && handsInstance) {
+              await handsInstance.send({ image: videoRef.current });
+            }
+          },
+          width: 320,
+          height: 240
+        });
+
+        await cameraInstance.start();
+      } catch (err) {
+        console.error('Hand tracking error:', err);
+        setIsLoading(false);
+      }
+    };
+
+    initHandTracking();
 
     return () => {
-      if (camera) camera.stop();
-      if (hands) hands.close();
+      isCancelled = true;
+      if (cameraInstance && cameraInstance.stop) cameraInstance.stop();
+      if (handsInstance && handsInstance.close) handsInstance.close();
     };
   }, [isActive]);
 
